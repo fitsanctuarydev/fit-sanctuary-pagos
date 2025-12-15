@@ -1,0 +1,20 @@
+{
+  "name": "fit-sanctuary-api",
+  "version": "1.0.0",
+  "description": "Backend pagos",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "npm install && cd client && npm install && npm run build"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mercadopago": "^2.0.0",
+    "stripe": "^14.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,3 +1,9 @@
+#!/bin/bash
+
+echo "🚑 RESTAURANDO SISTEMA (MODO DIRECTO PARA MERCADO PAGO)..."
+
+# Actualizar App.jsx - Versión Estable
+cat > client/src/App.jsx <<'EOF'
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -293,3 +299,7 @@ function App() {
     );
 }
 export default App;
+EOF
+
+echo "✅ Sistema restaurado a modo directo (MP Stable)."
+echo "👉 Para subir: git add . && git commit -m 'restore stable' && git push origin main"

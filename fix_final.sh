@@ -1,3 +1,10 @@
+#!/bin/bash
+
+echo "🔧 Aplicando correcciones finales a PayPal y Mercado Pago..."
+
+# 1. ACTUALIZAR APP.JSX (Frontend)
+# Correcciones: .trim() en claves y 'amount' en MP Brick
+cat > client/src/App.jsx <<'EOF'
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -285,3 +292,29 @@ function App() {
     );
 }
 export default App;
+EOF
+
+# 2. CREAR PLANTILLA DE VARIABLES ENTORNO (Para que no fallen los scripts)
+echo "🔑 Generando archivos .env seguros..."
+# Para Frontend (Vite)
+cat > client/.env <<EOF
+VITE_STRIPE_PUBLIC_KEY=pk_test_TU_CLAVE_PUBLICA_AQUI
+VITE_MP_PUBLIC_KEY=TEST-TU_CLAVE_PUBLICA_AQUI
+VITE_PAYPAL_CLIENT_ID=test
+EOF
+
+# Para Backend (Node) - MOCK INICIAL
+cat > .env <<EOF
+STRIPE_SECRET_KEY=mock_sk
+MP_ACCESS_TOKEN=mock_at
+PAYPAL_CLIENT_ID=mock_id
+PAYPAL_CLIENT_SECRET=mock_secret
+EOF
+
+echo "✅ Reparación completa."
+echo "----------------------------------------------------------------"
+echo "⚠️  ACCIÓN REQUERIDA:"
+echo "1. Abre el archivo 'client/.env' y pega tus claves PÚBLICAS."
+echo "2. Abre el archivo '.env' (en la raíz) y pega tus claves SECRETAS."
+echo "3. Luego ejecuta: git add . && git commit -m 'Fixed payments' && git push origin main"
+echo "----------------------------------------------------------------"

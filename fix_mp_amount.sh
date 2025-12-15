@@ -1,3 +1,9 @@
+#!/bin/bash
+
+echo "🔧 Reparando 'Amount Required' en Mercado Pago..."
+
+# Sobrescribir App.jsx con la corrección específica
+cat > client/src/App.jsx <<'EOF'
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -299,3 +305,13 @@ function App() {
     );
 }
 export default App;
+EOF
+
+echo "✅ Corrección aplicada: Amount agregado a MP initialization."
+echo "👉 Para subir: git add . && git commit -m 'fix mp amount' && git push origin main"
+```
+
+3.  Ejecuta `bash fix_mp_amount.sh`.
+4.  Luego:
+    ```bash
+    git add . && git commit -m "fix mp amount" && git push origin main

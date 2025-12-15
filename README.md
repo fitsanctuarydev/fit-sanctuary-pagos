@@ -1,65 +1,96 @@
-🏋️ Fit Sanctuary - Plataforma de Pagos (Preventa)
+<div align="center">
 
-Plataforma de comercio electrónico diseñada para la venta de membresías y paquetes de preventa de Fit Sanctuary Studio. Integra múltiples pasarelas de pago (Stripe, Mercado Pago, PayPal) y notificaciones automáticas por correo electrónico en una arquitectura segura y escalable.
+<img src="client/public/assets/icono.png" alt="Fit Sanctuary Logo" width="120" />
 
-🚀 Características
+🏋️ Fit Sanctuary Studio
 
-Diseño Premium: Interfaz oscura/dorada con Tailwind CSS, alineada a la identidad de marca.
+Plataforma de Pagos & Preventa Exclusiva
 
-Multi-Pasarela:
+<p>
+<img src="https://www.google.com/search?q=https://img.shields.io/badge/Status-En%2520Producci%C3%B3n-success%3Fstyle%3Dfor-the-badge" alt="Status" />
+<img src="https://www.google.com/search?q=https://img.shields.io/badge/Stack-MERN-blue%3Fstyle%3Dfor-the-badge" alt="Stack" />
+<img src="https://www.google.com/search?q=https://img.shields.io/badge/Pagos-Stripe%2520|%20MercadoPago%20|%20PayPal-009ee3?style=for-the-badge" alt="Pagos" />
+</p>
 
-💳 Stripe: Pagos directos con tarjeta de crédito/débito.
+<p>
+Una experiencia de comercio electrónico premium, diseñada para la venta de membresías y paquetes de preventa con una arquitectura <b>segura</b>, <b>rápida</b> y <b>elegante</b>.
+</p>
 
-🤝 Mercado Pago: Integración nativa (Brick) para tarjetas, efectivo (Oxxo) y transferencias.
+</div>
 
-🌍 PayPal: Soporte para pagos internacionales seguros.
+<br />
 
-💸 Transferencia Directa: Flujo manual con instrucciones y enlace a WhatsApp para comprobantes.
+🌟 Características Principales
 
-Seguridad: Arquitectura Backend-for-Frontend (BFF) para ocultar claves secretas.
+Esta plataforma no es solo un formulario de pago; es una extensión de la identidad "Industrial Gold" de Fit Sanctuary.
 
-Notificaciones: Envío automático de recibos vía SMTP (Nodemailer).
+🎨 Diseño Premium UI/UX: Interfaz oscura con acentos dorados, animaciones suaves y adaptabilidad móvil total (Tailwind CSS v3).
 
-Responsive: Totalmente optimizado para móviles y escritorio.
+💳 Pasarela Multi-Pago Unificada:
+
+Stripe: Pagos directos con tarjeta de crédito/débito dentro del sitio.
+
+Mercado Pago: Integración nativa (Brick) para tarjetas, efectivo (Oxxo) y transferencias SPEI.
+
+PayPal: Soporte internacional con botones inteligentes.
+
+Transferencia Directa: Flujo manual guiado con subida de comprobantes y enlace directo a WhatsApp.
+
+🛡️ Seguridad BFF (Backend-for-Frontend): Arquitectura que oculta las llaves secretas en el servidor, exponiendo solo lo necesario al cliente.
+
+📧 Sistema de Notificaciones: Envío automático de recibos HTML elegantes vía SMTP (Nodemailer) tras cada compra exitosa.
 
 🛠️ Stack Tecnológico
 
-Frontend: React (Vite), Tailwind CSS, Lucide React.
+Componente
 
-Backend: Node.js, Express.
+Tecnología
 
-Integraciones: SDKs oficiales de Stripe, Mercado Pago y PayPal.
+Frontend
 
-Infraestructura: Configurado para despliegue automático en Render.com.
 
-📂 Estructura del Proyecto
 
-El proyecto sigue una estructura de Monorepo para facilitar el despliegue en servicios como Render:
+Backend
+
+
+
+Integraciones
+
+
+
+Despliegue
+
+
+
+📂 Estructura del Proyecto (Monorepo)
+
+El proyecto contiene tanto el servidor como el cliente en un mismo repositorio para facilitar el despliegue en servicios PaaS como Render.
 
 /
-├── server.js           # Servidor Node.js (API + Archivos Estáticos)
-├── package.json        # Dependencias del Backend y Scripts de Build
-└── client/             # Aplicación React (Frontend)
-    ├── src/            # Código fuente de React
-    ├── public/         # Assets (iconos, imágenes)
-    ├── vite.config.js  # Configuración de Vite (Proxy al backend)
-    └── ...
+├── server.js           # 🧠 Servidor Node.js (API de Pagos + Archivos Estáticos)
+├── package.json        # 📦 Dependencias del Backend y Scripts de Build maestros
+├── client/             # 🎨 Aplicación React (Frontend)
+│   ├── src/            # Código fuente de la interfaz
+│   ├── public/         # Assets públicos (iconos, imágenes)
+│   ├── vite.config.js  # Configuración de Vite (Proxy hacia el backend)
+│   └── .env            # Variables de entorno locales (Solo desarrollo)
+└── ...
 
 
-⚙️ Variables de Entorno (Environment Variables)
+⚙️ Variables de Entorno
 
 Para que el sistema funcione, es obligatorio configurar las siguientes variables.
 
-1. En Desarrollo (Local - client/.env)
+1️⃣ En Desarrollo (Local)
 
 Crea un archivo .env dentro de la carpeta client/ para las claves públicas:
 
-VITE_STRIPE_PUBLIC_KEY=pk_test_...
-VITE_MP_PUBLIC_KEY=TEST-...
-VITE_PAYPAL_CLIENT_ID=...
+VITE_STRIPE_PUBLIC_KEY=pk_test_tu_clave_aqui
+VITE_MP_PUBLIC_KEY=TEST-tu_clave_aqui
+VITE_PAYPAL_CLIENT_ID=tu_cliente_id_aqui
 
 
-2. En Producción (Render.com)
+2️⃣ En Producción (Render.com)
 
 Agrega estas variables en el panel de "Environment" de tu servicio web:
 
@@ -121,7 +152,7 @@ SMTP_PASS
 
 Contraseña de aplicación
 
-Ver nota abajo*
+Ver nota abajo
 
 VITE_STRIPE_PUBLIC_KEY
 
@@ -133,25 +164,25 @@ VITE_MP_PUBLIC_KEY
 
 Clave pública MP
 
-APP_USR-... (Public Key)
+APP_USR-...
 
 VITE_PAYPAL_CLIENT_ID
 
-ID Cliente PayPal (Frontend)
+ID Cliente PayPal
 
 Mismo que arriba
 
-Nota sobre Gmail SMTP: Si usas Gmail, debes generar una "Contraseña de Aplicación" en Google Account > Seguridad. No uses tu contraseña normal.
+⚠️ Nota sobre Gmail SMTP: Si usas Gmail, debes generar una "Contraseña de Aplicación" en Google Account > Seguridad. No uses tu contraseña normal.
 
-🚀 Despliegue en Render
+🚀 Guía de Despliegue (Render)
 
-Este proyecto está pre-configurado para desplegarse en Render.com.
+Este proyecto está pre-configurado para desplegarse automáticamente.
 
-Crea un nuevo Web Service.
+Crea un nuevo Web Service en Render.
 
 Conecta tu repositorio de GitHub.
 
-Usa la siguiente configuración:
+Usa la siguiente configuración de Build:
 
 Runtime: Node
 
@@ -161,15 +192,15 @@ Start Command: npm start
 
 Agrega las variables de entorno mencionadas arriba.
 
-¿Cómo funciona el Build?
+🧠 ¿Cómo funciona el Build?
 
-El comando npm run build en la raíz ejecuta un script inteligente que:
+El comando npm run build en la raíz ejecuta un script en cadena que:
 
-Instala las dependencias del servidor.
+Instala las dependencias del servidor (npm install).
 
 Entra a la carpeta client.
 
-Instala las dependencias de React (incluyendo devDependencies necesarias para Vite).
+Instala las dependencias de React (npm install --include=dev).
 
 Construye la aplicación React estática en client/dist.
 
@@ -177,10 +208,24 @@ El servidor (server.js) luego sirve estos archivos estáticos en la ruta / y la 
 
 🐛 Solución de Problemas Comunes
 
-Error 404 en Mercado Pago: Verifica que el amount NO se esté enviando desde el frontend si ya creaste una preferencia en el backend. El sistema actual usa inicialización directa en el frontend para mayor estabilidad.
+<details>
+<summary>❌ Error 400/404 en Mercado Pago</summary>
+Verifica que NO estés enviando el campo amount desde el frontend si ya creaste una preferencia (preferenceId) en el backend. El SDK de MP requiere uno u otro, no ambos al mismo tiempo.
+</details>
 
-Error de CORS: El archivo server.js tiene CORS habilitado, y vite.config.js tiene un proxy configurado para desarrollo local.
+<details>
+<summary>❌ Error "vite: not found" en Render</summary>
+Asegúrate de que el comando de build incluya --include=dev al instalar las dependencias del cliente, ya que Vite es una dependencia de desarrollo y Render las omite por defecto en producción.
+</details>
 
-Estilos rotos: Asegúrate de que Tailwind v3 esté instalado. La versión 4 puede causar conflictos con la configuración actual de PostCSS en Render.
+<details>
+<summary>❌ Estilos rotos o gigantes</summary>
+Asegúrate de estar usando tailwindcss versión 3.x. La versión 4 puede causar conflictos con la configuración actual de PostCSS en entornos Node estándar.
+</details>
 
-© 2024 Fit Sanctuary Studio. Todos los derechos reservados.
+<br />
+
+<div align="center">
+<p>© 2024 Fit Sanctuary Studio. Todos los derechos reservados.</p>
+<p><i>Forging Strength. Sculpting Character.</i></p>
+</div>

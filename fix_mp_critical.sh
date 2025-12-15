@@ -1,3 +1,9 @@
+#!/bin/bash
+
+echo "🚑 Aplicando parche crítico para Mercado Pago..."
+
+# Actualizar App.jsx con la configuración correcta del Brick
+cat > client/src/App.jsx <<'EOF'
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -309,3 +315,7 @@ function App() {
     );
 }
 export default App;
+EOF
+
+echo "✅ Corrección aplicada: Configuración explícita de Payment Methods en MP."
+echo "👉 Para subir: git add . && git commit -m 'fix mp final' && git push origin main"

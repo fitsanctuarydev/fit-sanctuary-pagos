@@ -1,3 +1,9 @@
+#!/bin/bash
+
+echo "🚑 Aplicando solución definitiva a Mercado Pago (Eliminando conflicto de monto)..."
+
+# Sobrescribir App.jsx con la configuración limpia
+cat > client/src/App.jsx <<'EOF'
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -319,3 +325,13 @@ function App() {
     );
 }
 export default App;
+EOF
+
+echo "✅ Solución definitiva de MP aplicada."
+echo "👉 Para subir: git add . && git commit -m 'fix mp ultimate' && git push origin main"
+```
+
+3.  Ejecuta `bash fix_mp_ultimate.sh`.
+4.  Sube los cambios:
+    ```bash
+    git add . && git commit -m "fix mp ultimate" && git push origin main

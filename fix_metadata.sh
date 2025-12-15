@@ -1,3 +1,9 @@
+#!/bin/bash
+
+echo "🏷️ Actualizando Título y Favicon..."
+
+# Sobrescribir el index.html con los datos correctos
+cat > client/index.html <<EOF
 <!doctype html>
 <html lang="es">
   <head>
@@ -15,3 +21,7 @@
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+EOF
+
+echo "✅ Metadatos actualizados."
+echo "👉 Ejecuta: git add . && git commit -m 'Update title and favicon' && git push origin main"

@@ -1,26 +1,31 @@
 #!/bin/bash
 
-echo "⚙️  Actualizando integraciones a Modo Nativo (Sin Redirecciones)..."
+echo "⚙️  Reparando integraciones y configurando claves..."
 
-# 1. Instalar dependencias del Backend
-echo "📦 Instalando SDKs en el servidor..."
-npm install stripe mercadopago axios
-
-# 2. Instalar dependencias del Frontend
-echo "🎨 Instalando componentes React de pagos..."
+# 1. Instalar dependencias necesarias
+echo "📦 Asegurando dependencias..."
+npm install stripe mercadopago axios cors dotenv express
 cd client
 npm install @stripe/react-stripe-js @stripe/stripe-js @mercadopago/sdk-react @paypal/react-paypal-js
 cd ..
 
-# 3. ACTUALIZAR SERVER.JS (Lógica Real de Pagos)
+# 2. CREAR ARCHIVO DE VARIABLES DE ENTORNO PARA EL CLIENTE
+# Aquí es donde el frontend buscará las claves
+echo "🔑 Creando archivo de configuración de claves..."
+cat > client/.env <<EOF
+VITE_STRIPE_PUBLIC_KEY=pk_test_TU_CLAVE_PUBLICA_STRIPE_AQUI
+VITE_MP_PUBLIC_KEY=TEST-TU_CLAVE_PUBLICA_MP_AQUI
+VITE_PAYPAL_CLIENT_ID=test
+EOF
+
+# 3. ACTUALIZAR SERVER.JS (Backend robusto)
 cat > server.js <<'EOF'
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const axios = require('axios'); // Para PayPal API
+const axios = require('axios');
 require('dotenv').config();
 
-// SDKs
 const Stripe = require('stripe');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
@@ -28,24 +33,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- CONFIGURACIÓN ---
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+// --- CONFIGURACIÓN BACKEND ---
+// Si no hay claves, usamos modo "dummy" para que no crashee el servidor, pero los pagos fallarán.
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const mpClient = process.env.MP_ACCESS_TOKEN ? new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN }) : null;
 
-// Credenciales PayPal (Desde Render Environment)
 const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
-const PAYPAL_API = process.env.NODE_ENV === 'production' 
-  ? 'https://api-m.paypal.com' 
-  : 'https://api-m.sandbox.paypal.com';
+const PAYPAL_API = process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
 
-// ----------------------
-// 1. STRIPE (Payment Intent)
-// ----------------------
+// 1. STRIPE
 app.post('/api/stripe/create-intent', async (req, res) => {
+  if (!stripe) return res.status(500).json({ error: "Falta configurar STRIPE_SECRET_KEY en el servidor" });
   try {
     const { amount } = req.body;
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Centavos
+      amount: Math.round(amount * 100),
       currency: 'mxn',
       automatic_payment_methods: { enabled: true },
     });
@@ -55,21 +57,16 @@ app.post('/api/stripe/create-intent', async (req, res) => {
   }
 });
 
-// ----------------------
-// 2. MERCADO PAGO (Preference para Bricks)
-// ----------------------
+// 2. MERCADO PAGO
 app.post('/api/mp/create-preference', async (req, res) => {
+  if (!mpClient) return res.status(500).json({ error: "Falta configurar MP_ACCESS_TOKEN en el servidor" });
   try {
     const { title, price } = req.body;
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
         items: [{ title, unit_price: Number(price), quantity: 1, currency_id: 'MXN' }],
-        // Back URLs son requeridas aunque usemos Bricks para el flujo final
-        back_urls: {
-          success: "https://www.tu-sitio.com", 
-          failure: "https://www.tu-sitio.com",
-        },
+        back_urls: { success: "https://fit-sanctuary.com", failure: "https://fit-sanctuary.com" },
       }
     });
     res.json({ id: result.id });
@@ -78,11 +75,9 @@ app.post('/api/mp/create-preference', async (req, res) => {
   }
 });
 
-// ----------------------
-// 3. PAYPAL (Server-Side Integration)
-// ----------------------
-// Generar Token de Acceso
+// 3. PAYPAL
 const generatePayPalAccessToken = async () => {
+  if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) throw new Error("Faltan claves de PayPal");
   const auth = Buffer.from(PAYPAL_CLIENT_ID + ":" + PAYPAL_CLIENT_SECRET).toString("base64");
   const response = await axios.post(`${PAYPAL_API}/v1/oauth2/token`, "grant_type=client_credentials", {
     headers: { Authorization: `Basic ${auth}` },
@@ -97,12 +92,11 @@ app.post('/api/paypal/create-order', async (req, res) => {
     const response = await axios.post(`${PAYPAL_API}/v2/checkout/orders`, {
       intent: "CAPTURE",
       purchase_units: [{ amount: { currency_code: "MXN", value: amount } }],
-    }, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    }, { headers: { Authorization: `Bearer ${accessToken}` } });
     res.json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Error en PayPal" });
   }
 });
 
@@ -119,7 +113,6 @@ app.post('/api/paypal/capture-order', async (req, res) => {
   }
 });
 
-// --- SERVIR FRONTEND ---
 app.use(express.static(path.join(__dirname, 'client/dist')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'client/dist/index.html')));
 
@@ -127,7 +120,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('Servidor corriendo en puerto ' + PORT));
 EOF
 
-# 4. ACTUALIZAR APP.JSX (Frontend Integrado)
+# 4. ACTUALIZAR APP.JSX (Frontend Corregido)
 cat > client/src/App.jsx <<'EOF'
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
@@ -136,11 +129,16 @@ import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { ShieldCheck, Lock, ArrowLeft, CheckCircle, Clock, MapPin, ChevronRight } from 'lucide-react';
 
-// --- CONFIGURACIÓN PÚBLICA (Frontend) ---
-// Cambia esto por tu llave PÚBLICA de Stripe (empieza con pk_live_...)
-const stripePromise = loadStripe("pk_test_TU_CLAVE_PUBLICA_STRIPE"); 
-// Inicializar MP con tu llave PÚBLICA (empieza con APP_USR-...)
-initMercadoPago('TEST-TU-CLAVE-PUBLICA-MP', { locale: 'es-MX' });
+// --- LEER CLAVES DEL ARCHIVO .ENV ---
+const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+const MP_KEY = import.meta.env.VITE_MP_PUBLIC_KEY;
+const PAYPAL_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+
+// Inicializar solo si las claves existen para evitar crashes
+const stripePromise = STRIPE_KEY && !STRIPE_KEY.includes('TU_CLAVE') ? loadStripe(STRIPE_KEY) : null;
+if (MP_KEY && !MP_KEY.includes('TU_CLAVE')) {
+    initMercadoPago(MP_KEY, { locale: 'es-MX' });
+}
 
 const products = [
     { id: 'm_est', name: 'Mensualidad Estudiantes', price: 449, category: 'Mensualidad', desc: 'Requiere credencial vigente. Incluye: Cardio y Pesas.' },
@@ -154,7 +152,6 @@ const products = [
     { id: 'c_hyr', name: 'Pack Hyrox', price: 499, category: 'Clases', desc: '4 clases a la semana.' },
 ];
 
-// --- COMPONENTE FORMULARIO STRIPE ---
 const StripeForm = ({ onSuccess }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -186,11 +183,11 @@ const StripeForm = ({ onSuccess }) => {
   );
 };
 
-// --- APP PRINCIPAL ---
 function App() {
     const [view, setView] = useState('shop');
     const [selectedPlan, setSelectedPlan] = useState(null);
-    const [paymentMethod, setPaymentMethod] = useState(null); // 'stripe', 'mp', 'paypal', 'transfer'
+    const [paymentMethod, setPaymentMethod] = useState(null);
+    const [loading, setLoading] = useState(false);
     
     // Estados para integraciones
     const [stripeClientSecret, setStripeClientSecret] = useState(null);
@@ -199,27 +196,34 @@ function App() {
     const getFee = (price) => Math.round(price * 0.05);
     const getTotal = (price) => price + getFee(price);
 
-    // Iniciar Pagos (Llamadas al Backend)
     const initPayment = async (method, plan) => {
         setPaymentMethod(method);
         const total = getTotal(plan.price);
 
-        if (method === 'stripe') {
-            const res = await fetch('/api/stripe/create-intent', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: total })
-            });
-            const data = await res.json();
-            setStripeClientSecret(data.clientSecret);
-        }
-        
-        if (method === 'mp') {
-            const res = await fetch('/api/mp/create-preference', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: plan.name, price: total })
-            });
-            const data = await res.json();
-            setMpPreferenceId(data.id);
+        try {
+            if (method === 'stripe') {
+                if (!stripePromise) { alert("Error: Clave de Stripe no configurada en Frontend"); return; }
+                const res = await fetch('/api/stripe/create-intent', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: total })
+                });
+                const data = await res.json();
+                if(data.error) throw new Error(data.error);
+                setStripeClientSecret(data.clientSecret);
+            }
+            
+            if (method === 'mp') {
+                const res = await fetch('/api/mp/create-preference', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: plan.name, price: total })
+                });
+                const data = await res.json();
+                if(data.error) throw new Error(data.error);
+                setMpPreferenceId(data.id);
+            }
+        } catch (e) {
+            alert("Error iniciando pago: " + e.message);
+            setPaymentMethod(null);
         }
     };
 
@@ -232,7 +236,6 @@ function App() {
                     <div className="flex items-center gap-3" onClick={() => setView('shop')}>
                         <div className="w-8 h-8 rounded-full bg-yellow-600/10 flex items-center justify-center border border-yellow-600/30 overflow-hidden">
                             <img src="/assets/icono.png" alt="FS" className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
-                            <span className="font-bold text-yellow-500 text-xs absolute" style={{zIndex:-1}}>FS</span>
                         </div>
                         <span className="font-bold uppercase tracking-wider text-sm">Fit Sanctuary</span>
                     </div>
@@ -241,19 +244,15 @@ function App() {
             </header>
 
             <main className="pt-24 px-4 max-w-xl mx-auto relative z-10">
-                
-                {/* --- TIENDA --- */}
                 {view === 'shop' && (
                     <div className="animate-fade-in">
                         <div className="text-center mb-8">
                             <div className="inline-block bg-yellow-500 text-black font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider mb-2">Preventa 05-20 Dic</div>
                             <h1 className="text-2xl font-black uppercase text-white mb-2">Elige tu Plan</h1>
                         </div>
-                        
                         <div className="space-y-4">
                             {products.map(plan => (
-                                <div key={plan.id} onClick={() => { setSelectedPlan(plan); setView('checkout'); }} 
-                                     className={`relative p-5 rounded-xl border cursor-pointer transition-all active:scale-[0.98] ${plan.highlight ? 'bg-gradient-to-r from-neutral-900 to-[#151515] border-yellow-500/40 shadow-lg' : 'bg-[#181818] border-neutral-800'}`}>
+                                <div key={plan.id} onClick={() => { setSelectedPlan(plan); setView('checkout'); }} className={`relative p-5 rounded-xl border cursor-pointer transition-all active:scale-[0.98] ${plan.highlight ? 'bg-gradient-to-r from-neutral-900 to-[#151515] border-yellow-500/40 shadow-lg' : 'bg-[#181818] border-neutral-800'}`}>
                                     {plan.tag && <div className="absolute top-0 right-0 bg-yellow-600 text-black text-[9px] font-bold px-2 py-1 rounded-bl-lg uppercase">{plan.tag}</div>}
                                     <div className="flex justify-between items-start">
                                         <div className="pr-4"><h3 className="font-bold uppercase text-sm text-white">{plan.name}</h3><p className="text-[10px] text-neutral-500 mt-1">{plan.desc}</p></div>
@@ -271,7 +270,6 @@ function App() {
                     </div>
                 )}
 
-                {/* --- CHECKOUT --- */}
                 {view === 'checkout' && selectedPlan && (
                     <div className="animate-fade-in">
                         <button onClick={() => { setView('shop'); setPaymentMethod(null); }} className="text-xs text-neutral-500 mb-6 hover:text-white flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Volver</button>
@@ -290,88 +288,43 @@ function App() {
                         {!paymentMethod ? (
                             <div className="space-y-3">
                                 <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wide">Selecciona método de pago</h3>
-                                
-                                {/* BOTÓN STRIPE */}
                                 <button onClick={() => initPayment('stripe', selectedPlan)} className="w-full bg-white text-black p-4 rounded-xl flex items-center justify-between hover:bg-neutral-200 transition-colors">
-                                    <div className="text-left"><span className="block font-bold text-sm">Tarjeta Crédito/Débito</span><span className="text-[10px] text-neutral-600">Vía Stripe (Visa/MC/Amex)</span></div>
-                                    <ChevronRight className="w-4 h-4" />
+                                    <div className="text-left"><span className="block font-bold text-sm">Tarjeta Crédito/Débito</span><span className="text-[10px] text-neutral-600">Vía Stripe</span></div><ChevronRight className="w-4 h-4" />
                                 </button>
-
-                                {/* BOTÓN MERCADO PAGO */}
                                 <button onClick={() => initPayment('mp', selectedPlan)} className="w-full bg-[#009EE3] text-white p-4 rounded-xl flex items-center justify-between hover:bg-[#008bd0] transition-colors">
-                                    <div className="text-left"><span className="block font-bold text-sm">Mercado Pago</span><span className="text-[10px] opacity-90">Tarjetas, Transferencia, Oxxo</span></div>
-                                    <ChevronRight className="w-4 h-4" />
+                                    <div className="text-left"><span className="block font-bold text-sm">Mercado Pago</span><span className="text-[10px] opacity-90">Tarjetas, Transferencia, Oxxo</span></div><ChevronRight className="w-4 h-4" />
                                 </button>
-
-                                {/* BOTÓN PAYPAL */}
                                 <button onClick={() => initPayment('paypal', selectedPlan)} className="w-full bg-[#003087] text-white p-4 rounded-xl flex items-center justify-between hover:bg-[#00256b] transition-colors">
-                                    <div className="text-left"><span className="block font-bold text-sm italic">PayPal</span><span className="text-[10px] opacity-80">Pago seguro internacional</span></div>
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-
-                                {/* BOTÓN TRANSFERENCIA */}
-                                <button onClick={() => setPaymentMethod('transfer')} className="w-full bg-[#1a1a1a] border border-neutral-800 text-white p-4 rounded-xl flex items-center justify-between hover:border-yellow-500/50 transition-colors">
-                                    <div className="text-left"><span className="block font-bold text-sm text-green-500">Transferencia Directa</span><span className="text-[10px] text-neutral-500">Sin comisiones extra</span></div>
-                                    <ChevronRight className="w-4 h-4" />
+                                    <div className="text-left"><span className="block font-bold text-sm italic">PayPal</span><span className="text-[10px] opacity-80">Pago seguro internacional</span></div><ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
                         ) : (
                             <div className="animate-fade-in">
-                                {/* PASARELAS INTEGRADAS */}
-                                
-                                {/* 1. STRIPE ELEMENTS */}
                                 {paymentMethod === 'stripe' && stripeClientSecret && (
-                                    <Elements stripe={stripePromise} options={{ clientSecret: stripeClientSecret, appearance: { theme: 'night', labels: 'floating' } }}>
+                                    <Elements key={stripeClientSecret} stripe={stripePromise} options={{ clientSecret: stripeClientSecret, appearance: { theme: 'night', labels: 'floating' } }}>
                                         <StripeForm onSuccess={() => setView('success')} />
                                     </Elements>
                                 )}
-
-                                {/* 2. MERCADO PAGO BRICK */}
                                 {paymentMethod === 'mp' && mpPreferenceId && (
                                     <div className="bg-white rounded-lg p-4">
                                         <Payment initialization={{ preferenceId: mpPreferenceId }} customization={{ visual: { style: { theme: 'default' } } }} onSubmit={() => setView('success')} />
                                     </div>
                                 )}
-
-                                {/* 3. PAYPAL BUTTONS */}
                                 {paymentMethod === 'paypal' && (
                                     <div className="bg-white rounded-lg p-4">
-                                        <PayPalScriptProvider options={{ "client-id": "test", currency: "MXN" }}> 
-                                            {/* NOTA: Cambia "test" por tu Client ID real en el código final si quieres probar local */}
+                                        <PayPalScriptProvider options={{ "client-id": PAYPAL_ID || "test", currency: "MXN" }}> 
                                             <PayPalButtons 
                                                 createOrder={async () => {
-                                                    const res = await fetch("/api/paypal/create-order", {
-                                                        method: "POST", headers: { "Content-Type": "application/json" },
-                                                        body: JSON.stringify({ amount: getTotal(selectedPlan.price) }),
-                                                    });
+                                                    const res = await fetch("/api/paypal/create-order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount: getTotal(selectedPlan.price) }) });
                                                     const order = await res.json();
                                                     return order.id;
                                                 }}
                                                 onApprove={async (data) => {
-                                                    await fetch("/api/paypal/capture-order", {
-                                                        method: "POST", headers: { "Content-Type": "application/json" },
-                                                        body: JSON.stringify({ orderID: data.orderID }),
-                                                    });
+                                                    await fetch("/api/paypal/capture-order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderID: data.orderID }) });
                                                     setView('success');
                                                 }}
                                             />
                                         </PayPalScriptProvider>
-                                    </div>
-                                )}
-
-                                {/* 4. TRANSFERENCIA (MANUAL) */}
-                                {paymentMethod === 'transfer' && (
-                                    <div className="space-y-4">
-                                        <div className="bg-neutral-900/50 p-4 rounded-lg text-xs text-neutral-300 border border-neutral-800">
-                                            <p className="mb-1"><span className="text-neutral-500">Banco:</span> <strong className="text-white">BANAMEX</strong></p>
-                                            <p className="mb-1"><span className="text-neutral-500">Titular:</span> <strong className="text-white">Luis Gael Bringas Olmos</strong></p>
-                                            <div className="h-[1px] bg-neutral-700 my-2"></div>
-                                            <p className="mb-1 flex justify-between"><span>CLABE:</span> <strong className="text-white font-mono select-all">002180702215233914</strong></p>
-                                            <p className="mb-1 flex justify-between"><span>Cuenta:</span> <strong className="text-white font-mono select-all">70221523391</strong></p>
-                                        </div>
-                                        <a href={`https://wa.me/525533727291?text=Hola, adjunto comprobante para ${selectedPlan.name}`} target="_blank" className="w-full bg-green-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-green-500 transition-colors">
-                                            <MessageCircle className="w-4 h-4" /> Enviar Comprobante WA
-                                        </a>
                                     </div>
                                 )}
                             </div>
@@ -379,7 +332,6 @@ function App() {
                     </div>
                 )}
 
-                {/* --- SUCCESS --- */}
                 {view === 'success' && (
                     <div className="animate-fade-in text-center py-20 px-6">
                         <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/30"><CheckCircle className="w-12 h-12 text-green-500" /></div>
@@ -395,21 +347,10 @@ function App() {
 export default App;
 EOF
 
-echo "✅ Integración nativa lista."
-echo "⚠️  IMPORTANTE: Agrega tus claves de API en las variables de entorno de Render:"
-echo "   - STRIPE_SECRET_KEY"
-echo "   - MP_ACCESS_TOKEN"
-echo "   - PAYPAL_CLIENT_ID"
-echo "   - PAYPAL_CLIENT_SECRET"
-echo "👉 Para subir cambios: git add . && git commit -m 'Pagos Nativos' && git push origin main"
-```
-
-### Ejecutar la actualización:
-
-3.  Guarda el archivo.
-4.  Ejecuta en la terminal: `bash update_integrations.sh`
-5.  Cuando termine, sube los cambios:
-    ```bash
-    git add .
-    git commit -m "Pagos Nativos"
-    git push origin main
+echo "✅ Código Actualizado."
+echo "--------------------------------------------------------"
+echo "⚠️  ACCIÓN REQUERIDA (Para que funcione):"
+echo "1. Busca el archivo 'client/.env' en el menú de la izquierda."
+echo "2. Reemplaza 'pk_test_TU_CLAVE...' con tus claves REALES de Stripe y Mercado Pago."
+echo "3. Luego ejecuta: git add . && git commit -m 'fix keys' && git push origin main"
+echo "--------------------------------------------------------"

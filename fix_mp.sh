@@ -1,3 +1,9 @@
+#!/bin/bash
+
+echo "🔧 Reparando configuración de Mercado Pago Brick..."
+
+# Sobrescribir App.jsx con la configuración corregida del Brick
+cat > client/src/App.jsx <<'EOF'
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -285,3 +291,13 @@ function App() {
     );
 }
 export default App;
+EOF
+
+echo "✅ Correcciones aplicadas a MP Brick."
+echo "👉 Para subir: git add . && git commit -m 'Fix MP Brick' && git push origin main"
+```
+
+3.  Ejecuta `bash fix_mp.sh`.
+4.  Luego sube los cambios:
+    ```bash
+    git add . && git commit -m "Fix MP Brick" && git push origin main

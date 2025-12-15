@@ -12,15 +12,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- CONFIGURACIÓN PAGOS ---
+// --- CONFIGURACIÓN ---
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const mpClient = process.env.MP_ACCESS_TOKEN ? new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN }) : null;
 const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
 const PAYPAL_API = process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
 
-// --- ENDPOINTS ---
-
-// 1. MERCADO PAGO (Generar Preferencia)
+// 1. MERCADO PAGO (Preferencia Limpia)
 app.post('/api/mp/create-preference', async (req, res) => {
   if (!mpClient) return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN" });
   try {
@@ -28,9 +26,10 @@ app.post('/api/mp/create-preference', async (req, res) => {
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
-        items: [{ title, unit_price: Number(price), quantity: 1, currency_id: 'MXN' }],
-        back_urls: { success: "https://fit-sanctuary-pagos.onrender.com", failure: "https://fit-sanctuary-pagos.onrender.com" },
+        items: [{ title: title, unit_price: Number(price), quantity: 1, currency_id: 'MXN' }],
+        back_urls: { success: "https://fit-sanctuary.com", failure: "https://fit-sanctuary.com" },
         auto_return: "approved",
+        // No forzamos excluded_payment_methods para evitar errores de cuenta
       }
     });
     res.json({ id: result.id });
@@ -93,39 +92,51 @@ app.post('/api/paypal/capture-order', async (req, res) => {
   }
 });
 
-// 4. CORREO (SMTP)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: true,
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-});
-
+// 4. CORREO (Protegido contra fallos)
 app.post('/api/send-email', async (req, res) => {
+  // Si no hay credenciales, respondemos éxito falso para no romper el flujo del usuario
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.log("⚠️ SMTP no configurado, correo omitido.");
+    return res.json({ success: true, message: "Email skipped (no config)" });
+  }
+
   const { email, plan, price, orderId } = req.body;
-  if (!process.env.SMTP_USER) return res.json({ success: true, message: "Mock email" });
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: process.env.SMTP_PORT || 465,
+    secure: true,
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
 
   try {
     await transporter.sendMail({
       from: '"Fit Sanctuary" <' + process.env.SMTP_USER + '>',
       to: email,
-      subject: `Confirmación #${orderId}`,
-      html: `<h1>Pago Exitoso</h1><p>Plan: ${plan}</p><p>Total: $${price}</p>`,
+      subject: `Confirmación de Pago #${orderId}`,
+      html: `
+        <div style="font-family:sans-serif;background:#111;color:#fff;padding:20px;border-radius:10px;">
+          <h2 style="color:#eab308;">¡Pago Exitoso!</h2>
+          <p>Bienvenido a Fit Sanctuary.</p>
+          <div style="background:#222;padding:15px;margin:20px 0;border-radius:5px;">
+            <p><strong>Plan:</strong> ${plan}</p>
+            <p><strong>Total:</strong> $${price} MXN</p>
+            <p><strong>Orden:</strong> ${orderId}</p>
+          </div>
+          <p>Muestra este correo en recepción.</p>
+        </div>
+      `,
     });
     res.json({ success: true });
   } catch (error) {
-    console.error("Mail Error:", error);
-    res.status(500).json({ error: "Error mail" });
+    console.error("Error enviando email:", error.message);
+    // Respondemos éxito al frontend aunque falle el email para que el usuario vea la pantalla de éxito
+    res.json({ success: true, warning: "Email failed but payment ok" });
   }
 });
 
 // --- SERVIR FRONTEND ---
-// Esto es lo que hace que funcione en Render: Sirve la App de React compilada
 app.use(express.static(path.join(__dirname, 'client/dist')));
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/dist/index.html'));
-});
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'client/dist/index.html')));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('Servidor corriendo en puerto ' + PORT));

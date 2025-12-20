@@ -257,9 +257,10 @@ app.post('/api/send-email', async (req, res) => {
     // HTML mejorado con mejor diseño
     const htmlContent = `
       <!DOCTYPE html>
-      <html>
+      <html lang="es">
         <head>
           <meta charset="UTF-8">
+          <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; }
@@ -353,10 +354,14 @@ app.post('/api/send-email', async (req, res) => {
         `;
 
         const mailOptions = {
-          from: `"Fit Sanctuary" <${process.env.SMTP_USER}>`,
+          from: `"Módulo de Pagos Fit Sanctuary" <${process.env.SMTP_USER}>`,
           to: email,
           subject: `✓ Pago Confirmado - ${plan} #${orderId}`,
           html: htmlContent,
+          headers: {
+            'Content-Type': 'text/html; charset=UTF-8',
+            'Content-Transfer-Encoding': '8bit'
+          },
           text: `
     Confirmación de Pago - Fit Sanctuary
 

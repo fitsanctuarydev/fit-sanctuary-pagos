@@ -395,15 +395,26 @@ function App() {
                                     <div className="bg-white rounded-lg p-4">
                                         <PayPalScriptProvider options={{ "client-id": PAYPAL_ID || "test", currency: "MXN" }}> 
                                             <PayPalButtons 
-                                                createOrder={async () => {
-                                                    const res = await fetch("/api/paypal/create-order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount: getTotal(selectedPlan.price) }) });
-                                                    const order = await res.json();
-                                                    return order.id;
-                                                }}
+                                                    createOrder={(data, actions) => {
+                                                        return actions.order.create({
+                                                            intent: "CAPTURE",
+                                                            purchase_units: [{
+                                                                reference_id: orderId,
+                                                                amount: {
+                                                                    currency_code: "MXN",
+                                                                    value: String(getTotal(selectedPlan.price).toFixed(2))
+                                                                }
+                                                            }]
+                                                        });
+                                                    }}
                                                 onApprove={async (data) => {
-                                                    await fetch("/api/paypal/capture-order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderID: data.orderID }) });
+                                                        // Mostrar éxito (en producción, validar en backend)
                                                     handleSuccess();
                                                 }}
+                                                    onError={(err) => {
+                                                        console.error("PayPal error:", err);
+                                                        alert("Error con PayPal: " + err.message);
+                                                    }}
                                             />
                                         </PayPalScriptProvider>
                                     </div>

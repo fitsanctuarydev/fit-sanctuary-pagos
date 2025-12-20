@@ -381,9 +381,21 @@ app.post('/api/send-email', async (req, res) => {
           console.log(`✅ Email enviado a ${email} (Orden: ${orderId})`);
           return res.json({ success: true, message: "Email de confirmación enviado correctamente", messageId: sendResult.info && sendResult.info.messageId });
         } else {
-          console.error('❌ Todos los intentos de envío fallaron:', sendResult.error && sendResult.error.message ? sendResult.error.message : sendResult.error);
-          // Respondemos éxito al frontend aunque falle el email para que el usuario vea la pantalla de éxito
-          return res.json({ success: true, warning: "Email no enviado pero pago confirmado. El equipo será notificado para confirmación manual." });
+          console.error('❌ Todos los intentos de envío SMTP fallaron:', sendResult.error && sendResult.error.message ? sendResult.error.message : sendResult.error);
+          // Intentar HTTP fallback (MXRoute API)
+          try {
+            const httpFallbackResult = await sendEmailHttpFallback(mailOptions);
+            if (httpFallbackResult.success) {
+              console.log(`✅ Email enviado vía HTTP fallback a ${email} (Orden: ${orderId})`);
+              return res.json({ success: true, message: "Email enviado vía HTTP fallback", info: httpFallbackResult.info });
+            } else {
+              console.error('❌ HTTP fallback falló:', httpFallbackResult.error && httpFallbackResult.error.message ? httpFallbackResult.error.message : httpFallbackResult.error);
+              return res.json({ success: true, warning: "Email no enviado pero pago confirmado. El equipo será notificado para confirmación manual." });
+            }
+          } catch (err) {
+            console.error('❌ Error en HTTP fallback:', err && err.message ? err.message : err);
+            return res.json({ success: true, warning: "Email no enviado pero pago confirmado. Error en fallback HTTP." });
+          }
         }
   } catch (error) {
     console.error("❌ Error enviando email (unexpected):", error && error.message ? error.message : error);

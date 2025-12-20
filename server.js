@@ -330,7 +330,7 @@ app.post('/api/send-email', async (req, res) => {
               <div class="contact-info">
                 <p><strong>¿Problemas con tu acceso?</strong></p>
                 <p>Si tienes dudas o problemas con tu membresía, no dudes en contactarnos:</p>
-                <p>📞 <a href="https://wa.me/525533727291" class="footer-link" style="text-decoration: underline;">WhatsApp: +55 (533) 727-291</a></p>
+                <p>📞 <a href="https://wa.me/525533727291" class="footer-link" style="text-decoration: underline;">WhatsApp: +52 55 3372 7291</a></p>
                 <p>📧 Email: soporte@fitsanctuary.com</p>
               </div>
 
@@ -375,7 +375,7 @@ app.post('/api/send-email', async (req, res) => {
 
     Por favor, preséntate en recepción con este correo para completar tu registro.
 
-    ¿Preguntas? Contáctanos vía WhatsApp: +55 (533) 727-291
+    ¿Preguntas? Contáctanos vía WhatsApp: +52 55 3372 7291
 
     Fit Sanctuary Studio
           `,

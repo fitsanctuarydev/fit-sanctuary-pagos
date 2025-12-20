@@ -112,9 +112,14 @@ function App() {
 
             if (extRef) setOrderId(extRef);
 
-            // If Mercado Pago redirected back with a collection id or approved status, show success
-            if (collectionId || (collectionStatus && collectionStatus.toLowerCase() === 'approved') || path.includes('/success')) {
+            // Only show success if Mercado Pago explicitly approved the payment
+            if ((collectionId && collectionStatus && collectionStatus.toLowerCase() === 'approved') || path.includes('/success')) {
+                console.log('✅ Pago confirmado por Mercado Pago, mostrando pantalla de éxito');
                 setView('success');
+                // Trigger email send if we have order details
+                if (selectedPlan && email) {
+                    handleSuccess(extRef || orderId);
+                }
                 return;
             }
 
@@ -351,11 +356,6 @@ function App() {
                                                 <Wallet 
                                                     initialization={{ 
                                                         preferenceId: mpPreferenceId
-                                                    }}
-                                                    onSubmit={async (formData) => {
-                                                        console.log(`📤 Pago iniciado en MP (Orden: ${orderId})`);
-                                                        // El pago será confirmado por el webhook
-                                                        handleSuccess(orderId);
                                                     }}
                                                     onError={(error) => {
                                                         console.error('❌ Error en Mercado Pago:', error);

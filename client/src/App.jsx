@@ -320,36 +320,18 @@ function App() {
                                         {mpPreferenceId && !mpLoading && !mpError && (
                                             <div className="bg-white rounded-lg p-4">
                                                 <Payment 
-                                                    key={`mp-payment-${mpPreferenceId}`}
                                                     initialization={{ 
-                                                        preferenceId: mpPreferenceId,
-                                                        amount: mpAmount
-                                                    }} 
-                                                    customization={{ 
-                                                        visual: { 
-                                                            theme: 'default',
-                                                            style: {
-                                                                customVariables: {
-                                                                    baseColor: '#009EE3',
-                                                                    textPrimaryColor: '#000000',
-                                                                    textSecondaryColor: '#666666',
-                                                                    inputBackgroundColor: '#FFFFFF',
-                                                                    formBackgroundColor: '#FFFFFF'
-                                                                }
-                                                            }
-                                                        }
-                                                    }}
-                                                    onReady={() => {
-                                                        console.log(`✅ Mercado Pago listo (Orden: ${orderId})`);
-                                                    }}
-                                                    onError={(error) => {
-                                                        console.error('❌ Error en Mercado Pago:', error);
-                                                        setMpError('Error al cargar el formulario de pago. Por favor intenta de nuevo o usa otro método.');
+                                                        amount: mpAmount,
+                                                        preferenceId: mpPreferenceId
                                                     }}
                                                     onSubmit={async (formData) => {
                                                         console.log(`📤 Pago iniciado en MP (Orden: ${orderId})`);
                                                         // El pago será confirmado por el webhook
                                                         handleSuccess(orderId);
+                                                    }}
+                                                    onError={(error) => {
+                                                        console.error('❌ Error en Mercado Pago:', error);
+                                                        setMpError('Error al cargar el formulario de pago. Por favor intenta de nuevo o usa otro método.');
                                                     }}
                                                 />
                                                 

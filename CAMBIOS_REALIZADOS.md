@@ -69,7 +69,7 @@ const generateOrderId = () => `ORD-${Date.now()}-${Math.random().toString(36).su
 #### Frontend (client/package.json)
 ```diff
 - "@mercadopago/sdk-react": "^1.0.6"
-+ "@mercadopago/sdk-react": "^1.6.0"
++ "@mercadopago/sdk-react": "^1.0.6" (versión única disponible en npm)
 - "@paypal/react-paypal-js": "^8.9.2"
 + "@paypal/react-paypal-js": "^8.10.0"
 - "@stripe/react-stripe-js": "^5.4.1"
@@ -207,7 +207,7 @@ const generateOrderId = () => `ORD-${Date.now()}-${Math.random().toString(36).su
 | **Webhooks** | ❌ No existe | ✅ Implementado |
 | **Rastreo de Órdenes** | ❌ Sin ID | ✅ OrderId único |
 | **Manejo de Errores** | ⚠️ Básico | ✅ Robusto |
-| **SDK MP** | 🔴 1.0.6 (viejo) | 🟢 1.6.0 (actual) |
+| **SDK MP** | 🟢 1.0.6 (estable, único publicado) | 🟢 1.0.6 (mantiene estabilidad) |
 | **Confirmación Pago** | 🤷 Manual/Incierta | ✅ Automática |
 | **Documentación** | ❌ Escasa | ✅ Completa |
 | **Seguridad** | ⚠️ Token expuesto | ✅ En backend |

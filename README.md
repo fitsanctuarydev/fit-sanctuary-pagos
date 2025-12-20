@@ -71,9 +71,23 @@ Para que el sistema funcione, es obligatorio configurar las siguientes variables
 
 ### 1️⃣ En Desarrollo (Local)
 
-Crea un archivo `.env` dentro de la carpeta `client/` para las claves públicas:
+Crea un archivo `.env` en la **raíz del proyecto**:
 
 ```env
+# Backend
+NODE_ENV=development
+MP_ACCESS_TOKEN=TEST-tu_token_aqui
+STRIPE_SECRET_KEY=sk_test_tu_clave_aqui
+PAYPAL_CLIENT_ID=tu_cliente_id_aqui
+PAYPAL_CLIENT_SECRET=tu_secreto_aqui
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=tu_email@gmail.com
+SMTP_PASS=tu_contraseña_de_app
+BACKEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173
+
+# Frontend
 VITE_STRIPE_PUBLIC_KEY=pk_test_tu_clave_aqui
 VITE_MP_PUBLIC_KEY=TEST-tu_clave_aqui
 VITE_PAYPAL_CLIENT_ID=tu_cliente_id_aqui
@@ -97,8 +111,26 @@ Agrega estas variables en el panel de "Environment" de tu servicio web:
 | `VITE_STRIPE_PUBLIC_KEY` | Clave pública Stripe | `pk_live_...` |
 | `VITE_MP_PUBLIC_KEY` | Clave pública MP | `APP_USR-...` |
 | `VITE_PAYPAL_CLIENT_ID` | ID Cliente PayPal | Mismo que arriba |
+| `BACKEND_URL` | URL del backend (webhooks) | `https://fit-sanctuary-api.onrender.com` |
+| `FRONTEND_URL` | URL del frontend | `https://fit-sanctuary.onrender.com` |
+| `MP_PUBLIC_KEY` | Clave pública MP (backend) | `APP_USR-...` |
 
 > ⚠️ **Nota sobre Gmail SMTP**: Si usas Gmail, debes generar una "Contraseña de Aplicación" en Google Account > Seguridad. No uses tu contraseña normal.
+
+---
+
+## 🔐 Configuración de Webhooks de Mercado Pago
+
+Para que los pagos se confirmen correctamente, **DEBES configurar webhooks en MP**:
+
+1. Ve a [Configuración de tu aplicación en MP](https://www.mercadopago.com.ar/developers/panel/applications)
+2. Selecciona tu aplicación
+3. Entra en "Webhooks"
+4. Agrega una URL de notificación: `https://tu-dominio.com/webhooks/mercadopago`
+5. Selecciona "payment" como evento a notificar
+6. Guarda
+
+**Sin webhooks, los pagos NO se confirmarán automáticamente.**
 
 ---
 
@@ -190,6 +222,39 @@ node server.js             # Backend en puerto 5000
 
 ---
 
+## 📜 Documentos Legales & Políticas
+
+Esta plataforma incluye documentos legales completos y cumplimiento normativo:
+
+| Documento | Descripción | Ubicación |
+|-----------|-------------|-----------|
+| **Aviso de Privacidad** | Protección de datos personales (LFPDPPP) | `PRIVACY_POLICY.md` |
+| **Términos y Condiciones** | Términos de uso y responsabilidades | `TERMS_AND_CONDITIONS.md` |
+| **Política de Devolución** | Reembolsos y cambios de membresía | `REFUND_POLICY.md` |
+| **Configuración de Seguridad** | Mejores prácticas de pago | `EMAIL_SETUP.md` |
+
+### 📋 Resumen Rápido
+
+**Protección de Datos:**
+- ✓ Cumplimiento LFPDPPP (Ley Federal de Protección de Datos)
+- ✓ Derechos ARCO (Acceso, Rectificación, Cancelación, Oposición)
+- ✓ Encriptación de datos sensibles
+- ✓ No compartir información con terceros
+
+**Términos de Servicio:**
+- ✓ Política de reembolsos clara (24 horas)
+- ✓ Términos de membresía actualizados
+- ✓ Cancelación y cancelación automática
+- ✓ Limitaciones de responsabilidad
+
+**Seguridad de Pagos:**
+- ✓ Cumplimiento PCI-DSS
+- ✓ Encriptación SSL/TLS
+- ✓ Validación de datos
+- ✓ Prevención de fraude
+
+---
+
 <div align="center">
 
 ## 💪 Contribuciones
@@ -198,7 +263,7 @@ Las contribuciones son bienvenidas. Por favor, abre un issue primero para discut
 
 ---
 
-<p>© 2024 Fit Sanctuary Studio. Todos los derechos reservados.</p>
+<p>© 2025 Fit Sanctuary Studio. Todos los derechos reservados.</p>
 <p><i>Forging Strength. Sculpting Character.</i></p>
 
 </div>

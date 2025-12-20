@@ -3,7 +3,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { ShieldCheck, Lock, ArrowLeft, CheckCircle, Clock, MapPin, ChevronRight, UploadCloud, MessageCircle, Banknote, CreditCard, Mail } from 'lucide-react';
+import { ShieldCheck, Lock, ArrowLeft, CheckCircle, Clock, MapPin, ChevronRight, UploadCloud, MessageCircle, Banknote, CreditCard, Mail, AlertCircle, ExternalLink } from 'lucide-react';
 
 const cleanKey = (key) => (key || "").replace(/[\n\r\s]/g, "").trim();
 const STRIPE_KEY = cleanKey(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
@@ -72,13 +72,18 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [fileUploaded, setFileUploaded] = useState(false);
     const [email, setEmail] = useState('');
+    const [orderId, setOrderId] = useState(null);
     
     // Estados API
     const [stripeClientSecret, setStripeClientSecret] = useState(null);
     const [mpPreferenceId, setMpPreferenceId] = useState(null);
+    const [mpError, setMpError] = useState(null);
+    const [mpLoading, setMpLoading] = useState(false);
 
     const getFee = (price) => Math.round(price * 0.05);
     const getTotal = (price) => price + getFee(price);
+
+    const generateOrderId = () => `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
     const handleSelectPlan = (plan) => {
         setSelectedPlan(plan);
@@ -87,6 +92,9 @@ function App() {
         setMpPreferenceId(null);
         setStripeClientSecret(null);
         setEmail('');
+        setMpError(null);
+        setMpLoading(false);
+        setOrderId(generateOrderId());
         window.scrollTo({ top: 0, behavior: 'smooth' });
         setView('checkout');
     };
@@ -94,7 +102,8 @@ function App() {
     const handleSuccess = async (paymentId = 'N/A') => {
         setView('success');
         try {
-            await fetch('/api/send-email', {
+            console.log(`📧 Enviando email de confirmación para orden: ${paymentId}`);
+            const emailResponse = await fetch('/api/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -104,7 +113,17 @@ function App() {
                     orderId: paymentId !== 'N/A' ? paymentId : Math.floor(Math.random()*10000)
                 })
             });
-        } catch (e) { console.error("Error enviando correo (no crítico)", e); }
+            
+            const emailData = await emailResponse.json();
+            
+            if (emailData.success) {
+                console.log('✅ Email de confirmación enviado correctamente');
+            } else {
+                console.warn('⚠️ Problema al enviar email:', emailData.warning || emailData.message);
+            }
+        } catch (e) { 
+            console.error("⚠️ Error enviando correo (no crítico, pago confirmado):", e);
+        }
     };
 
     const initPayment = async (method, plan) => {
@@ -125,26 +144,45 @@ function App() {
                 if(data.error) throw new Error(data.error);
                 setStripeClientSecret(data.clientSecret);
             }
+            
             if (method === 'mp') {
-                // Limpiar estado previo
+                // Limpiar estados previos
                 setMpPreferenceId(null);
+                setMpError(null);
+                setMpLoading(true);
                 
                 const res = await fetch('/api/mp/create-preference', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title: plan.name, price: total })
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        title: plan.name, 
+                        price: total,
+                        orderId: orderId,
+                        userEmail: email
+                    })
                 });
                 
-                if (!res.ok) throw new Error("Error en servidor MP");
-                const data = await res.json();
-                if(data.error) throw new Error(data.error);
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Error ${res.status}`);
+                }
                 
-                // Retraso intencional para asegurar que React limpie el componente anterior
-                setTimeout(() => setMpPreferenceId(data.id), 100);
+                const data = await res.json();
+                if(!data.id) throw new Error("No se recibió ID de preferencia");
+                
+                console.log('✓ Preferencia MP creada:', data.id);
+                setMpPreferenceId(data.id);
+                setMpLoading(false);
             }
         } catch (e) {
-            console.error(e);
-            alert("Error iniciando pago: " + e.message);
-            setPaymentMethod(null);
+            console.error('Error iniciando pago:', e);
+            if (method === 'mp') {
+                setMpError(e.message);
+                setMpLoading(false);
+            } else {
+                alert("Error iniciando pago: " + e.message);
+                setPaymentMethod(null);
+            }
         }
     };
 
@@ -160,7 +198,7 @@ function App() {
 
             <header className="fixed top-0 w-full z-50 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-white/5">
                 <div className="max-w-xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3" onClick={() => setView('shop')}>
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('shop')}>
                         <div className="w-8 h-8 rounded-full bg-yellow-600/10 flex items-center justify-center border border-yellow-600/30 overflow-hidden">
                             <img src="/assets/icono.png" alt="FS" className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
                         </div>
@@ -249,20 +287,84 @@ function App() {
                                     </Elements>
                                 )}
                                 
-                                {/* MERCADO PAGO - CONFIGURACIÓN CORREGIDA (SOLO PREFERENCE ID) */}
-                                {paymentMethod === 'mp' && !mpPreferenceId && (
-                                    <div className="bg-white rounded-lg p-8 flex justify-center">
-                                        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-                                    </div>
-                                )}
-                                {paymentMethod === 'mp' && mpPreferenceId && (
-                                    <div className="bg-white rounded-lg p-4">
-                                        <Payment 
-                                            key={mpPreferenceId}
-                                            initialization={{ preferenceId: mpPreferenceId }} 
-                                            customization={{ visual: { style: { theme: 'default' } } }} 
-                                            onSubmit={handleSuccess}
-                                        />
+                                {/* MERCADO PAGO - CORREGIDO */}
+                                {paymentMethod === 'mp' && (
+                                    <div className="space-y-4">
+                                        {mpLoading && (
+                                            <div className="bg-white rounded-lg p-8 flex flex-col items-center justify-center">
+                                                <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full mb-3"></div>
+                                                <p className="text-sm text-gray-600">Preparando pago seguro...</p>
+                                            </div>
+                                        )}
+                                        
+                                        {mpError && (
+                                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                                <div className="flex items-start gap-3">
+                                                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <h4 className="font-bold text-red-900 text-sm mb-1">Error al cargar Mercado Pago</h4>
+                                                        <p className="text-sm text-red-700 mb-3">{mpError}</p>
+                                                        <button 
+                                                            onClick={() => initPayment('mp', selectedPlan)}
+                                                            className="text-sm text-red-600 hover:text-red-800 underline font-medium"
+                                                        >
+                                                            Intentar nuevamente
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {mpPreferenceId && !mpLoading && !mpError && (
+                                            <div className="bg-white rounded-lg p-4">
+                                                <Payment 
+                                                    key={`mp-payment-${mpPreferenceId}`}
+                                                    initialization={{ 
+                                                        preferenceId: mpPreferenceId
+                                                    }} 
+                                                    customization={{ 
+                                                        visual: { 
+                                                            theme: 'default',
+                                                            style: {
+                                                                customVariables: {
+                                                                    baseColor: '#009EE3',
+                                                                    textPrimaryColor: '#000000',
+                                                                    textSecondaryColor: '#666666',
+                                                                    inputBackgroundColor: '#FFFFFF',
+                                                                    formBackgroundColor: '#FFFFFF'
+                                                                }
+                                                            }
+                                                        }
+                                                    }}
+                                                    onReady={() => {
+                                                        console.log(`✅ Mercado Pago listo (Orden: ${orderId})`);
+                                                    }}
+                                                    onError={(error) => {
+                                                        console.error('❌ Error en Mercado Pago:', error);
+                                                        setMpError('Error al cargar el formulario de pago. Por favor intenta de nuevo o usa otro método.');
+                                                    }}
+                                                    onSubmit={async (formData) => {
+                                                        console.log(`📤 Pago iniciado en MP (Orden: ${orderId})`);
+                                                        // El pago será confirmado por el webhook
+                                                        handleSuccess(orderId);
+                                                    }}
+                                                />
+                                                
+                                                {/* Fallback para navegadores con problemas */}
+                                                <div className="mt-4 pt-4 border-t border-gray-200 text-center">
+                                                    <p className="text-xs text-gray-600 mb-2">¿No ves el formulario de pago?</p>
+                                                    <a
+                                                        href={`https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=${mpPreferenceId}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                                    >
+                                                        <ExternalLink className="w-4 h-4" />
+                                                        Pagar en nueva ventana
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -283,6 +385,7 @@ function App() {
                                         </PayPalScriptProvider>
                                     </div>
                                 )}
+                                
                                 {paymentMethod === 'transfer' && (
                                     <div className="space-y-4">
                                         <div className="bg-neutral-900/50 p-4 rounded-lg text-xs text-neutral-300 border border-neutral-800">
@@ -290,13 +393,33 @@ function App() {
                                             <p className="mb-1"><span className="text-neutral-500">Titular:</span> <strong className="text-white">Luis Gael Bringas Olmos</strong></p>
                                             <div className="h-[1px] bg-neutral-700 my-2"></div>
                                             <p className="mb-1 flex justify-between"><span>CLABE:</span> <strong className="text-white font-mono select-all">002180702215233914</strong></p>
-                                            <p className="mb-1 flex justify-between"><span>Cuenta:</span> <strong className="text-white font-mono select-all">70221523391</strong></p>
+                                            <p className="mb-1 flex justify-between"><span>Cuenta:</span> <strong className="text-white font-mono select-all">1722152339</strong></p>
                                         </div>
-                                        <div onClick={() => setFileUploaded(true)} className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${fileUploaded ? 'border-green-500 bg-green-500/5' : 'border-neutral-700 hover:border-yellow-500/50'}`}>
-                                            {fileUploaded ? <div className="flex flex-col items-center text-green-500"><CheckCircle className="w-8 h-8 mb-2" /><span className="text-xs font-bold">Comprobante cargado</span></div> : <div className="flex flex-col items-center text-neutral-500"><UploadCloud className="w-8 h-8 mb-2" /><span className="text-xs">Toca para subir foto o PDF</span></div>}
+                                        
+                                        <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4">
+                                            <div className="flex gap-3 text-xs">
+                                                <AlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="text-yellow-200 font-bold mb-1">Importante</p>
+                                                    <p className="text-yellow-100/80">Después de transferir, sube el comprobante para confirmar tu pago.</p>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <button onClick={handleTransfer} disabled={!fileUploaded || loading} className={`w-full py-3 rounded-lg font-bold text-sm uppercase tracking-wide transition-all mt-4 ${!fileUploaded ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400'}`}>{loading ? 'Verificando...' : 'Confirmar Transferencia'}</button>
-                                        <div className="text-center"><a href={`https://wa.me/525533727291?text=Hola, adjunto comprobante para ${selectedPlan.name}`} target="_blank" className="text-xs text-green-500 hover:text-green-400 flex items-center justify-center gap-1"><MessageCircle className="w-3 h-3" /> Enviar Comprobante WA</a></div>
+
+                                        <div>
+                                            <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Comprobante de Transferencia</label>
+                                            <label className="w-full border-2 border-dashed border-neutral-700 rounded-xl p-6 cursor-pointer hover:border-yellow-500/50 transition-colors flex flex-col items-center justify-center">
+                                                <UploadCloud className="w-6 h-6 text-neutral-500 mb-2" />
+                                                <span className="text-xs text-neutral-400 font-bold">Haz clic para subir</span>
+                                                <span className="text-[10px] text-neutral-600 mt-1">PNG, JPG o PDF</span>
+                                                <input type="file" accept="image/*,.pdf" onChange={() => setFileUploaded(true)} className="hidden" />
+                                            </label>
+                                            {fileUploaded && <div className="mt-2 flex items-center gap-2 text-xs text-green-500"><CheckCircle className="w-4 h-4" /> Comprobante cargado</div>}
+                                        </div>
+
+                                        <button onClick={handleTransfer} disabled={!fileUploaded || loading} className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                            {loading ? 'Procesando...' : 'Confirmar Transferencia'}
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -305,16 +428,25 @@ function App() {
                 )}
 
                 {view === 'success' && (
-                    <div className="animate-fade-in text-center py-20 px-6">
-                        <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/30"><CheckCircle className="w-12 h-12 text-green-500" /></div>
-                        <h1 className="text-3xl font-black uppercase text-white mb-2">¡Pago Recibido!</h1>
-                        <p className="text-neutral-400 text-sm mb-4">Bienvenido a Fit Sanctuary. Tu membresía está activa.</p>
-                        <p className="text-neutral-500 text-xs mb-8">Hemos enviado el recibo a: <strong className="text-white">{email}</strong></p>
-                        <button onClick={() => { setView('shop'); setPaymentMethod(null); setEmail(''); }} className="bg-white text-black font-bold px-8 py-3 rounded-full hover:scale-105 transition-transform">Volver al Inicio</button>
+                    <div className="animate-fade-in text-center py-12">
+                        <div className="inline-block bg-green-900/20 border border-green-500/30 rounded-full p-4 mb-6">
+                            <CheckCircle className="w-12 h-12 text-green-500" />
+                        </div>
+                        <h1 className="text-2xl font-black uppercase mb-2">¡Pago Confirmado!</h1>
+                        <p className="text-neutral-400 text-sm mb-6">Revisa tu correo para más detalles de tu membresía.</p>
+                        <button onClick={() => setView('shop')} className="bg-yellow-500 text-black font-bold py-3 px-6 rounded-lg hover:bg-yellow-400 transition-colors">
+                            Volver al Shop
+                        </button>
                     </div>
                 )}
             </main>
+
+            <style>{`
+                @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+                .animate-fade-in { animation: fade-in 0.3s ease-in; }
+            `}</style>
         </div>
     );
 }
+
 export default App;

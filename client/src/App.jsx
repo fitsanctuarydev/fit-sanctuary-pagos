@@ -262,7 +262,7 @@ function App() {
                             <h1 className="text-2xl font-black uppercase text-white mb-2">Preventa Exclusiva</h1>
                             <p className="text-neutral-400 text-xs max-w-xs mx-auto">Precios especiales por apertura.</p>
                         </div>
-                        {['Mensualidad', 'Paquetes', 'All Inclusive', 'Clases'].map(category => (
+                        {['Prueba', 'Mensualidad', 'Paquetes', 'All Inclusive', 'Clases'].map(category => (
                             <div key={category} className="mb-8">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="h-[1px] bg-neutral-800 flex-1"></div>

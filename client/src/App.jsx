@@ -77,6 +77,7 @@ function App() {
     // Estados API
     const [stripeClientSecret, setStripeClientSecret] = useState(null);
     const [mpPreferenceId, setMpPreferenceId] = useState(null);
+    const [mpAmount, setMpAmount] = useState(null);
     const [mpError, setMpError] = useState(null);
     const [mpLoading, setMpLoading] = useState(false);
 
@@ -172,6 +173,7 @@ function App() {
                 
                 console.log('✓ Preferencia MP creada:', data.id);
                 setMpPreferenceId(data.id);
+                setMpAmount(data.amount || total);
                 setMpLoading(false);
             }
         } catch (e) {
@@ -320,7 +322,8 @@ function App() {
                                                 <Payment 
                                                     key={`mp-payment-${mpPreferenceId}`}
                                                     initialization={{ 
-                                                        preferenceId: mpPreferenceId
+                                                        preferenceId: mpPreferenceId,
+                                                        amount: mpAmount
                                                     }} 
                                                     customization={{ 
                                                         visual: { 

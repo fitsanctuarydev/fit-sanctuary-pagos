@@ -61,7 +61,11 @@ app.post('/api/mp/create-preference', async (req, res) => {
     }
     
     console.log(`✓ Preferencia MP creada: ${result.id} (Orden: ${orderId})`);
-    res.json({ id: result.id, init_point: result.init_point });
+    res.json({ 
+      id: result.id, 
+      init_point: result.init_point,
+      amount: Number(price)
+    });
     
   } catch (error) {
     console.error("❌ Error MP:", error.message);

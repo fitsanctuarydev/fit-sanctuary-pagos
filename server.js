@@ -330,7 +330,7 @@ app.post('/api/send-email', async (req, res) => {
               <div class="contact-info">
                 <p><strong>¿Problemas con tu acceso?</strong></p>
                 <p>Si tienes dudas o problemas con tu membresía, no dudes en contactarnos:</p>
-                <p>📞 <a href="https://wa.me/+5216241234567" class="footer-link" style="text-decoration: underline;">WhatsApp: +52 (624) 123-4567</a></p>
+                <p>📞 <a href="https://wa.me/525533727291" class="footer-link" style="text-decoration: underline;">WhatsApp: +55 (533) 727-291</a></p>
                 <p>📧 Email: soporte@fitsanctuary.com</p>
               </div>
 
@@ -346,7 +346,7 @@ app.post('/api/send-email', async (req, res) => {
               <p style="margin: 10px 0; color: #999;">Este es un correo automático, por favor no responda.</p>
               <p style="margin: 10px 0;">
                 <a href="https://pagos.fitsanctuary.mx" class="footer-link">Visita nuestro sitio de pagos</a> | 
-                <a href="https://instagram.com/fitsanctuary" class="footer-link">Síguenos en Instagram</a>
+                <a href="https://www.instagram.com/fit.sanctuary.mx/" class="footer-link">Síguenos en Instagram</a>
               </p>
             </div>
           </div>
@@ -354,7 +354,7 @@ app.post('/api/send-email', async (req, res) => {
         `;
 
         const mailOptions = {
-          from: `"Módulo de Pagos Fit Sanctuary" <${process.env.SMTP_USER}>`,
+          from: `Modulo de Pagos Fit Sanctuary <${process.env.SMTP_USER}>`,
           to: email,
           subject: `✓ Pago Confirmado - ${plan} #${orderId}`,
           html: htmlContent,
@@ -375,7 +375,7 @@ app.post('/api/send-email', async (req, res) => {
 
     Por favor, preséntate en recepción con este correo para completar tu registro.
 
-    ¿Preguntas? Contáctanos vía WhatsApp: +52 (624) 123-4567
+    ¿Preguntas? Contáctanos vía WhatsApp: +55 (533) 727-291
 
     Fit Sanctuary Studio
           `,

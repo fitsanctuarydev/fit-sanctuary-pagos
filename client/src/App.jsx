@@ -100,6 +100,35 @@ function App() {
         setView('checkout');
     };
 
+    // Detect returns from Mercado Pago (or other providers) and show success view
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const path = window.location.pathname || '/';
+
+            const extRef = params.get('external_reference') || params.get('external-reference');
+            const collectionId = params.get('collection_id') || params.get('collection-id');
+            const collectionStatus = params.get('collection_status') || params.get('collection-status') || params.get('status');
+
+            if (extRef) setOrderId(extRef);
+
+            // If Mercado Pago redirected back with a collection id or approved status, show success
+            if (collectionId || (collectionStatus && collectionStatus.toLowerCase() === 'approved') || path.includes('/success')) {
+                setView('success');
+                return;
+            }
+
+            // If the user is on a dedicated checkout path, keep checkout view
+            if (path.includes('/checkout')) {
+                setView('checkout');
+                return;
+            }
+        } catch (err) {
+            // ignore and keep default view
+            console.debug('URL parse error', err);
+        }
+    }, []);
+
     const handleSuccess = async (paymentId = 'N/A') => {
         setView('success');
         try {
@@ -424,6 +453,16 @@ function App() {
                     </div>
                 )}
             </main>
+
+            <footer className="mt-12 text-center text-xs text-neutral-400">
+                <div className="max-w-xl mx-auto space-x-3">
+                    <a href="https://github.com/fitsanctuarydev/fit-sanctuary-pagos/blob/main/PRIVACY_POLICY.md" target="_blank" rel="noopener noreferrer" className="underline">Aviso de Privacidad</a>
+                    <span className="text-neutral-600">•</span>
+                    <a href="https://github.com/fitsanctuarydev/fit-sanctuary-pagos/blob/main/TERMS_AND_CONDITIONS.md" target="_blank" rel="noopener noreferrer" className="underline">Términos y Condiciones</a>
+                    <span className="text-neutral-600">•</span>
+                    <a href="https://github.com/fitsanctuarydev/fit-sanctuary-pagos/blob/main/REFUND_POLICY.md" target="_blank" rel="noopener noreferrer" className="underline">Política de Devolución</a>
+                </div>
+            </footer>
 
             <style>{`
                 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

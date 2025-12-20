@@ -179,12 +179,35 @@ app.post('/api/send-email', async (req, res) => {
     return res.status(400).json({ error: "Datos incompletos para enviar email" });
   }
 
-  const transporter = nodemailer.createTransport({
+  const createTransporter = () => nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || 465,
+    port: Number(process.env.SMTP_PORT || 465),
     secure: true,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    // Timeouts to avoid long blocking in server logs
+    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT || 10000),
+    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT || 10000),
+    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT || 20000),
   });
+
+  const sendEmailWithRetries = async (mailOptions, attempts = 3) => {
+    let lastErr = null;
+    for (let i = 1; i <= attempts; i++) {
+      const transporter = createTransporter();
+      try {
+        // verify connection configuration (fast fail)
+        await transporter.verify();
+        const info = await transporter.sendMail(mailOptions);
+        return { success: true, info };
+      } catch (err) {
+        lastErr = err;
+        console.error(`⚠️ SMTP attempt ${i} failed (host=${process.env.SMTP_HOST || 'smtp.gmail.com'} port=${process.env.SMTP_PORT || 465}):`, err && err.message ? err.message : err);
+        // small backoff between retries
+        await new Promise(r => setTimeout(r, 500 * i));
+      }
+    }
+    return { success: false, error: lastErr };
+  };
 
   try {
     // HTML mejorado con mejor diseño
@@ -283,45 +306,42 @@ app.post('/api/send-email', async (req, res) => {
             </div>
           </div>
         </body>
-      </html>
-    `;
+        const mailOptions = {
+          from: `"Fit Sanctuary" <${process.env.SMTP_USER}>`,
+          to: email,
+          subject: `✓ Pago Confirmado - ${plan} #${orderId}`,
+          html: htmlContent,
+          text: `
+    Confirmación de Pago - Fit Sanctuary
 
-    const result = await transporter.sendMail({
-      from: `"Fit Sanctuary" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: `✓ Pago Confirmado - ${plan} #${orderId}`,
-      html: htmlContent,
-      text: `
-Confirmación de Pago - Fit Sanctuary
+    ¡Gracias por tu compra!
 
-¡Gracias por tu compra!
+    DETALLES DE LA TRANSACCIÓN:
+    ---------------------------------
+    Plan Adquirido: ${plan}
+    Número de Orden: ${orderId}
+    Total Pagado: $${price} MXN
 
-Tu pago ha sido procesado exitosamente.
+    Por favor, preséntate en recepción con este correo para completar tu registro.
 
-DETALLES DE LA TRANSACCIÓN:
----------------------------------
-Plan Adquirido: ${plan}
-Número de Orden: ${orderId}
-Total Pagado: $${price} MXN
+    ¿Preguntas? Contáctanos vía WhatsApp: +52 (624) 123-4567
 
-Por favor, preséntate en recepción con este correo para completar tu registro.
+    Fit Sanctuary Studio
+          `,
+        };
 
-¿Preguntas? Contáctanos vía WhatsApp: +52 (624) 123-4567
-
-Fit Sanctuary Studio
-      `,
-    });
-
-    console.log(`✅ Email enviado a ${email} (Orden: ${orderId})`);
-    res.json({ 
+        const sendResult = await sendEmailWithRetries(mailOptions, Number(process.env.SMTP_MAX_RETRIES || 3));
+        if (sendResult.success) {
+          console.log(`✅ Email enviado a ${email} (Orden: ${orderId})`);
+          res.json({ success: true, message: "Email de confirmación enviado correctamente", messageId: sendResult.info && sendResult.info.messageId });
+        } else {
+          console.error('❌ Todos los intentos de envío fallaron:', sendResult.error && sendResult.error.message ? sendResult.error.message : sendResult.error);
+          // Respondimos éxito al frontend aunque falle el email para que el usuario vea la pantalla de éxito
+          res.json({ success: true, warning: "Email no enviado pero pago confirmado. El equipo será notificado para confirmación manual." });
+        }
       success: true, 
-      message: "Email de confirmación enviado correctamente",
-      messageId: result.messageId
-    });
-  } catch (error) {
-    console.error("❌ Error enviando email:", error.message);
-    // Respondemos éxito al frontend aunque falle el email para que el usuario vea la pantalla de éxito
-    // pero logueamos el error para debugging
+        console.error("❌ Error enviando email (unexpected):", error && error.message ? error.message : error);
+        res.json({ success: true, warning: "Email no enviado pero pago confirmado. Error inesperado en el servidor." });
     res.json({ 
       success: true, 
       warning: "Email no enviado pero pago confirmado. El cliente recibirá confirmación manual." 

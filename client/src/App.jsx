@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
+import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { ShieldCheck, Lock, ArrowLeft, CheckCircle, Clock, MapPin, ChevronRight, UploadCloud, MessageCircle, Banknote, CreditCard, Mail, AlertCircle, ExternalLink } from 'lucide-react';
 
@@ -319,9 +319,8 @@ function App() {
                                         
                                         {mpPreferenceId && !mpLoading && !mpError && (
                                             <div className="bg-white rounded-lg p-4">
-                                                <Payment 
+                                                <Wallet 
                                                     initialization={{ 
-                                                        amount: mpAmount,
                                                         preferenceId: mpPreferenceId
                                                     }}
                                                     onSubmit={async (formData) => {

@@ -52,7 +52,11 @@ app.post('/api/mp/create-preference', async (req, res) => {
         notification_url: `${process.env.BACKEND_URL || 'http://localhost:3000'}/webhooks/mercadopago`,
         external_reference: orderId,
         payer: userEmail ? { email: userEmail } : undefined,
-        statement_descriptor: "FITSANCTUARY"
+        statement_descriptor: "FITSANCTUARY",
+        payment_methods: {
+          excluded_payment_methods: [],
+          excluded_payment_types: []
+        }
       }
     });
     

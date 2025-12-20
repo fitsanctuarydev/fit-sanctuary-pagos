@@ -99,38 +99,90 @@ app.post('/api/stripe/create-intent', async (req, res) => {
 
 // 3. PAYPAL
 const generatePayPalAccessToken = async () => {
-  if (!PAYPAL_CLIENT_ID) throw new Error("Faltan claves PayPal");
+  if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
+    throw new Error("Faltan PAYPAL_CLIENT_ID o PAYPAL_CLIENT_SECRET en env");
+  }
   const auth = Buffer.from(PAYPAL_CLIENT_ID + ":" + PAYPAL_CLIENT_SECRET).toString("base64");
-  const response = await axios.post(`${PAYPAL_API}/v1/oauth2/token`, "grant_type=client_credentials", {
-    headers: { Authorization: `Basic ${auth}` },
-  });
-  return response.data.access_token;
+  try {
+    const response = await axios.post(`${PAYPAL_API}/v1/oauth2/token`, "grant_type=client_credentials", {
+      headers: { Authorization: `Basic ${auth}` },
+    });
+    return response.data.access_token;
+  } catch (error) {
+    console.error("❌ Error getting PayPal token:", error.response?.data || error.message);
+    throw new Error("Error autenticando con PayPal: " + (error.response?.data?.error_description || error.message));
+  }
 };
 
 app.post('/api/paypal/create-order', async (req, res) => {
   try {
     const { amount } = req.body;
+    
+    // ✓ Validación de entrada
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ error: "Cantidad debe ser un número mayor a 0" });
+    }
+    
     const accessToken = await generatePayPalAccessToken();
     const response = await axios.post(`${PAYPAL_API}/v2/checkout/orders`, {
       intent: "CAPTURE",
-      purchase_units: [{ amount: { currency_code: "MXN", value: amount } }],
-    }, { headers: { Authorization: `Bearer ${accessToken}` } });
+      purchase_units: [{
+        amount: {
+          currency_code: "MXN",
+          value: String(amount.toFixed(2)) // PayPal requiere string con 2 decimales
+        }
+      }],
+    }, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    
+    if (!response.data || !response.data.id) {
+      throw new Error("PayPal no devolvió ID de orden");
+    }
+    
+    console.log(`✓ Orden PayPal creada: ${response.data.id} (Monto: $${amount} MXN)`);
     res.json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("❌ Error PayPal create-order:", error.message);
+    const errorMsg = error.response?.data?.message || error.message;
+    res.status(500).json({
+      error: errorMsg,
+      details: process.env.NODE_ENV === 'development' ? error.response?.data : undefined
+    });
   }
 });
 
 app.post('/api/paypal/capture-order', async (req, res) => {
   try {
     const { orderID } = req.body;
+    
+    // ✓ Validación de entrada
+    if (!orderID || typeof orderID !== 'string' || orderID.trim().length === 0) {
+      return res.status(400).json({ error: "orderID es requerido" });
+    }
+    
     const accessToken = await generatePayPalAccessToken();
-    const response = await axios.post(`${PAYPAL_API}/v2/checkout/orders/${orderID}/capture`, {}, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const response = await axios.post(
+      `${PAYPAL_API}/v2/checkout/orders/${orderID.trim()}/capture`,
+      {},
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+    
+    if (!response.data) {
+      throw new Error("PayPal no devolvió respuesta de captura");
+    }
+    
+    console.log(`✓ Orden PayPal capturada: ${orderID}`);
     res.json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("❌ Error PayPal capture-order:", error.message);
+    const errorMsg = error.response?.data?.message || error.message;
+    res.status(500).json({
+      error: errorMsg,
+      details: process.env.NODE_ENV === 'development' ? error.response?.data : undefined
+    });
   }
 });
 

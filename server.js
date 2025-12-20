@@ -306,6 +306,8 @@ app.post('/api/send-email', async (req, res) => {
             </div>
           </div>
         </body>
+        `;
+
         const mailOptions = {
           from: `"Fit Sanctuary" <${process.env.SMTP_USER}>`,
           to: email,

@@ -4,6 +4,9 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { ShieldCheck, Lock, ArrowLeft, CheckCircle, Clock, MapPin, ChevronRight, UploadCloud, MessageCircle, Banknote, CreditCard, Mail, AlertCircle, ExternalLink } from 'lucide-react';
+import TermsAndConditions from './pages/TermsAndConditions';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import RefundPolicy from './pages/RefundPolicy';
 
 const cleanKey = (key) => (key || "").replace(/[\n\r\s]/g, "").trim();
 const STRIPE_KEY = cleanKey(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
@@ -70,6 +73,7 @@ function App() {
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState('shop'); // 'shop', 'terms', 'privacy', 'refund'
     const [fileUploaded, setFileUploaded] = useState(false);
     const [email, setEmail] = useState('');
     const [orderId, setOrderId] = useState(null);
@@ -230,7 +234,12 @@ function App() {
 
     return (
         <div className="min-h-screen bg-[#0f0f0f] text-white font-sans pb-20 selection:bg-yellow-500 selection:text-black">
-            <div className="fixed inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` }}></div>
+            {/* Render pages based on currentPage state */}
+            {currentPage === 'terms' && <TermsAndConditions />}
+            {currentPage === 'privacy' && <PrivacyPolicy />}
+            {currentPage === 'refund' && <RefundPolicy />}
+
+            {currentPage === 'shop' && (<>
 
             <header className="fixed top-0 w-full z-50 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-white/5">
                 <div className="max-w-xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -456,11 +465,11 @@ function App() {
 
             <footer className="mt-12 text-center text-xs text-neutral-400">
                 <div className="max-w-xl mx-auto space-x-3">
-                    <a href="https://github.com/fitsanctuarydev/fit-sanctuary-pagos/blob/main/PRIVACY_POLICY.md" target="_blank" rel="noopener noreferrer" className="underline">Aviso de Privacidad</a>
+                    <button onClick={() => setCurrentPage('privacy')} className="underline hover:text-yellow-500">Aviso de Privacidad</button>
                     <span className="text-neutral-600">•</span>
-                    <a href="https://github.com/fitsanctuarydev/fit-sanctuary-pagos/blob/main/TERMS_AND_CONDITIONS.md" target="_blank" rel="noopener noreferrer" className="underline">Términos y Condiciones</a>
+                    <button onClick={() => setCurrentPage('terms')} className="underline hover:text-yellow-500">Términos y Condiciones</button>
                     <span className="text-neutral-600">•</span>
-                    <a href="https://github.com/fitsanctuarydev/fit-sanctuary-pagos/blob/main/REFUND_POLICY.md" target="_blank" rel="noopener noreferrer" className="underline">Política de Devolución</a>
+                    <button onClick={() => setCurrentPage('refund')} className="underline hover:text-yellow-500">Política de Devolución</button>
                 </div>
             </footer>
 
@@ -468,6 +477,7 @@ function App() {
                 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
                 .animate-fade-in { animation: fade-in 0.3s ease-in; }
             `}</style>
+            </>)}
         </div>
     );
 }

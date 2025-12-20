@@ -213,35 +213,40 @@ app.post('/api/send-email', async (req, res) => {
   // It will use the same SMTP credentials (`SMTP_USER` and `SMTP_PASS`) for authentication
   // Configure `MXROUTE_API_URL` to point to the provider API endpoint (see https://docs.mxroute.com/docs/api/smtp-api.html).
   const sendEmailHttpFallback = async (mailOptions) => {
-    const apiUrl = process.env.MXROUTE_API_URL || process.env.MXROUTE_API_HOST;
-    if (!apiUrl) {
-      console.log('ℹ️ No MXROUTE_API_URL configured; skipping HTTP fallback');
-      return { success: false, error: new Error('No MXROUTE_API_URL configured') };
-    }
+    // Default MXRoute API endpoint per docs
+    const apiUrl = process.env.MXROUTE_API_URL || 'https://smtpapi.mxroute.com/';
 
     try {
-      // Build payload. MXRoute's API accepts basic fields; adjust if your MXRoute plan requires different keys.
+      // Build payload to match MXRoute SMTP API spec
       const payload = {
+        server: process.env.SMTP_HOST || process.env.MXROUTE_SMTP_SERVER || '',
+        username: process.env.SMTP_USER,
+        password: process.env.SMTP_PASS,
         from: mailOptions.from,
         to: mailOptions.to,
         subject: mailOptions.subject,
-        html: mailOptions.html,
-        text: mailOptions.text,
+        body: mailOptions.html || mailOptions.text || ''
       };
 
+      // Basic validation
+      if (!payload.server || !payload.username || !payload.password) {
+        const err = new Error('Missing MXRoute required credentials/server in env vars');
+        console.error('⚠️ HTTP fallback pre-check failed:', err.message);
+        return { success: false, error: err };
+      }
+
       const response = await axios.post(apiUrl, payload, {
-        auth: {
-          username: process.env.SMTP_USER,
-          password: process.env.SMTP_PASS
-        },
         timeout: Number(process.env.MXROUTE_TIMEOUT || 10000),
         headers: { 'Content-Type': 'application/json' }
       });
 
-      if (response.status >= 200 && response.status < 300) {
-        return { success: true, info: response.data };
+      const data = response && response.data ? response.data : {};
+      if (response.status >= 200 && response.status < 300 && data.success) {
+        return { success: true, info: data };
       }
-      return { success: false, error: new Error('HTTP fallback returned status ' + response.status) };
+
+      const message = data && data.message ? data.message : `HTTP fallback returned status ${response.status}`;
+      return { success: false, error: new Error(message) };
     } catch (err) {
       console.error('⚠️ HTTP fallback error:', err && err.message ? err.message : err);
       return { success: false, error: err };
@@ -376,15 +381,8 @@ app.post('/api/send-email', async (req, res) => {
           console.log(`✅ Email enviado a ${email} (Orden: ${orderId})`);
           return res.json({ success: true, message: "Email de confirmación enviado correctamente", messageId: sendResult.info && sendResult.info.messageId });
         } else {
-          console.error('❌ Todos los intentos de envío SMTP fallaron:', sendResult.error && sendResult.error.message ? sendResult.error.message : sendResult.error);
-          // Intentar fallback HTTP (MXRoute API) antes de rendirnos
-          const httpFallbackResult = await sendEmailHttpFallback(mailOptions);
-          if (httpFallbackResult.success) {
-            console.log(`✅ Email enviado vía HTTP fallback a ${email} (Orden: ${orderId})`);
-            return res.json({ success: true, message: "Email enviado vía HTTP fallback", info: httpFallbackResult.info });
-          }
-          console.error('❌ HTTP fallback también falló:', httpFallbackResult.error && httpFallbackResult.error.message ? httpFallbackResult.error.message : httpFallbackResult.error);
-          // Respondemos éxito al frontend aunque fallen ambos métodos para no bloquear UX
+          console.error('❌ Todos los intentos de envío fallaron:', sendResult.error && sendResult.error.message ? sendResult.error.message : sendResult.error);
+          // Respondemos éxito al frontend aunque falle el email para que el usuario vea la pantalla de éxito
           return res.json({ success: true, warning: "Email no enviado pero pago confirmado. El equipo será notificado para confirmación manual." });
         }
   } catch (error) {

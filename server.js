@@ -45,9 +45,9 @@ app.post('/api/mp/create-preference', async (req, res) => {
           currency_id: 'MXN'
         }],
         back_urls: {
-          success: `${process.env.FRONTEND_URL || 'https://fit-sanctuary.com'}/success`,
-          failure: `${process.env.FRONTEND_URL || 'https://fit-sanctuary.com'}/checkout`,
-          pending: `${process.env.FRONTEND_URL || 'https://fit-sanctuary.com'}/pending`
+          success: `${process.env.FRONTEND_URL || 'https://pagos.fitsanctuary.mx'}/success`,
+          failure: `${process.env.FRONTEND_URL || 'https://pagos.fitsanctuary.mx'}/checkout`,
+          pending: `${process.env.FRONTEND_URL || 'https://pagos.fitsanctuary.mx'}/pending`
         },
         notification_url: `${process.env.BACKEND_URL || 'http://localhost:3000'}/webhooks/mercadopago`,
         external_reference: orderId,
@@ -277,7 +277,7 @@ app.post('/api/send-email', async (req, res) => {
               <p style="margin: 10px 0;">© 2025 Fit Sanctuary Studio. Todos los derechos reservados.</p>
               <p style="margin: 10px 0; color: #999;">Este es un correo automático, por favor no responda.</p>
               <p style="margin: 10px 0;">
-                <a href="https://fit-sanctuary.com" class="footer-link">Visita nuestro sitio web</a> | 
+                <a href="https://pagos.fitsanctuary.mx" class="footer-link">Visita nuestro sitio de pagos</a> | 
                 <a href="https://instagram.com/fitsanctuary" class="footer-link">Síguenos en Instagram</a>
               </p>
             </div>

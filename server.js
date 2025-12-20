@@ -335,19 +335,15 @@ app.post('/api/send-email', async (req, res) => {
         const sendResult = await sendEmailWithRetries(mailOptions, Number(process.env.SMTP_MAX_RETRIES || 3));
         if (sendResult.success) {
           console.log(`✅ Email enviado a ${email} (Orden: ${orderId})`);
-          res.json({ success: true, message: "Email de confirmación enviado correctamente", messageId: sendResult.info && sendResult.info.messageId });
+          return res.json({ success: true, message: "Email de confirmación enviado correctamente", messageId: sendResult.info && sendResult.info.messageId });
         } else {
           console.error('❌ Todos los intentos de envío fallaron:', sendResult.error && sendResult.error.message ? sendResult.error.message : sendResult.error);
-          // Respondimos éxito al frontend aunque falle el email para que el usuario vea la pantalla de éxito
-          res.json({ success: true, warning: "Email no enviado pero pago confirmado. El equipo será notificado para confirmación manual." });
+          // Respondemos éxito al frontend aunque falle el email para que el usuario vea la pantalla de éxito
+          return res.json({ success: true, warning: "Email no enviado pero pago confirmado. El equipo será notificado para confirmación manual." });
         }
-      success: true, 
-        console.error("❌ Error enviando email (unexpected):", error && error.message ? error.message : error);
-        res.json({ success: true, warning: "Email no enviado pero pago confirmado. Error inesperado en el servidor." });
-    res.json({ 
-      success: true, 
-      warning: "Email no enviado pero pago confirmado. El cliente recibirá confirmación manual." 
-    });
+  } catch (error) {
+    console.error("❌ Error enviando email (unexpected):", error && error.message ? error.message : error);
+    return res.json({ success: true, warning: "Email no enviado pero pago confirmado. Error inesperado en el servidor." });
   }
 });
 

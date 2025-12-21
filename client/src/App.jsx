@@ -19,7 +19,6 @@ if (MP_KEY && !MP_KEY.includes('TU_CLAVE')) {
 }
 
 const products = [
-    { id: 'test_1', name: 'Plan de Prueba', price: 10, category: 'Prueba', desc: 'Suscripción temporal de $10 MXN para probar métodos de pago.', tag: 'Test' },
     { id: 'm_est', name: 'Mensualidad Estudiantes', price: 449, category: 'Mensualidad', desc: 'Requiere credencial vigente. Incluye: Cardio y Pesas.' },
     { id: 'm_gen', name: 'Mensualidad General', price: 499, category: 'Mensualidad', desc: 'Incluye: Cardio, Pesas, Zumba y Funcional.' },
     { id: 'p_tri', name: 'Paquete 3 Meses', price: 1250, category: 'Paquetes', desc: 'Preventa. Incluye: Cardio, Pesas, Zumba y Funcional.', tag: 'Ahorro' },
@@ -262,7 +261,7 @@ function App() {
                             <h1 className="text-2xl font-black uppercase text-white mb-2">Preventa Exclusiva</h1>
                             <p className="text-neutral-400 text-xs max-w-xs mx-auto">Precios especiales por apertura.</p>
                         </div>
-                        {['Prueba', 'Mensualidad', 'Paquetes', 'All Inclusive', 'Clases'].map(category => (
+                        {['Mensualidad', 'Paquetes', 'All Inclusive', 'Clases'].map(category => (
                             <div key={category} className="mb-8">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="h-[1px] bg-neutral-800 flex-1"></div>

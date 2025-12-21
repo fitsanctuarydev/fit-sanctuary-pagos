@@ -19,7 +19,7 @@ if (MP_KEY && !MP_KEY.includes('TU_CLAVE')) {
 }
 
 const products = [
-    { id: 'test_1', name: 'Plan de Prueba', price: 1, category: 'Prueba', desc: 'Suscripción temporal de $1 MXN para probar métodos de pago.', tag: 'Test' },
+    { id: 'test_1', name: 'Plan de Prueba', price: 10, category: 'Prueba', desc: 'Suscripción temporal de $10 MXN para probar métodos de pago.', tag: 'Test' },
     { id: 'm_est', name: 'Mensualidad Estudiantes', price: 449, category: 'Mensualidad', desc: 'Requiere credencial vigente. Incluye: Cardio y Pesas.' },
     { id: 'm_gen', name: 'Mensualidad General', price: 499, category: 'Mensualidad', desc: 'Incluye: Cardio, Pesas, Zumba y Funcional.' },
     { id: 'p_tri', name: 'Paquete 3 Meses', price: 1250, category: 'Paquetes', desc: 'Preventa. Incluye: Cardio, Pesas, Zumba y Funcional.', tag: 'Ahorro' },

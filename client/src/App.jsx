@@ -78,6 +78,22 @@ function App() {
     const [email, setEmail] = useState('');
     const [orderId, setOrderId] = useState(null);
     
+    // Client information states
+    const [clientInfo, setClientInfo] = useState({
+        nombre: '',
+        apellido: '',
+        telefono: '',
+        fechaNacimiento: '',
+        genero: '',
+        calle: '',
+        ciudad: '',
+        estado: '',
+        codigoPostal: '',
+        contactoEmergencia: '',
+        telefonoEmergencia: '',
+        aceptaTerminos: false
+    });
+    
     // Estados API
     const [stripeClientSecret, setStripeClientSecret] = useState(null);
     const [mpPreferenceId, setMpPreferenceId] = useState(null);
@@ -100,6 +116,20 @@ function App() {
         setMpError(null);
         setMpLoading(false);
         setOrderId(generateOrderId());
+        setClientInfo({
+            nombre: '',
+            apellido: '',
+            telefono: '',
+            fechaNacimiento: '',
+            genero: '',
+            calle: '',
+            ciudad: '',
+            estado: '',
+            codigoPostal: '',
+            contactoEmergencia: '',
+            telefonoEmergencia: '',
+            aceptaTerminos: false
+        });
         window.scrollTo({ top: 0, behavior: 'smooth' });
         setView('checkout');
     };
@@ -141,7 +171,39 @@ function App() {
     const handleSuccess = async (paymentId = 'N/A') => {
         setView('success');
         try {
-            console.log(`📧 Enviando email de confirmación para orden: ${paymentId}`);
+            console.log(`📧 Creando cliente en CRM y enviando confirmación para orden: ${paymentId}`);
+            
+            // Create client in CRM
+            const clientData = {
+                nombre: clientInfo.nombre,
+                apellido: clientInfo.apellido,
+                email: email,
+                telefono: clientInfo.telefono,
+                fechaNacimiento: clientInfo.fechaNacimiento,
+                genero: clientInfo.genero,
+                direccion: {
+                    calle: clientInfo.calle,
+                    ciudad: clientInfo.ciudad,
+                    estado: clientInfo.estado,
+                    codigoPostal: clientInfo.codigoPostal
+                },
+                contactoEmergencia: clientInfo.contactoEmergencia,
+                telefonoEmergencia: clientInfo.telefonoEmergencia,
+                membershipType: selectedPlan.id,
+                amount: getTotal(selectedPlan.price),
+                orderId: paymentId
+            };
+            
+            const crmResponse = await fetch('/api/crm/create-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(clientData)
+            });
+            
+            if (!crmResponse.ok) {
+                console.error('Error creando cliente en CRM:', await crmResponse.text());
+            }
+            
             const emailResponse = await fetch('/api/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -300,27 +362,245 @@ function App() {
                             </div>
                         </div>
 
-                        <div className="mb-6">
-                            <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Tu Correo (Para el recibo)</label>
-                            <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ejemplo@correo.com" className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" />
+                        {/* CLIENT INFORMATION FORM */}
+                        <div className="mb-8 space-y-4">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                                <h3 className="text-xs font-bold text-yellow-500 uppercase tracking-widest">Información Personal</h3>
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                            </div>
+
+                            {/* Email */}
+                            <div>
+                                <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Correo Electrónico *</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+                                    <input 
+                                        type="email" 
+                                        value={email} 
+                                        onChange={(e) => setEmail(e.target.value)} 
+                                        placeholder="ejemplo@correo.com" 
+                                        required
+                                        className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Nombre y Apellido */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Nombre *</label>
+                                    <input 
+                                        type="text" 
+                                        value={clientInfo.nombre} 
+                                        onChange={(e) => setClientInfo({...clientInfo, nombre: e.target.value})} 
+                                        placeholder="Juan" 
+                                        required
+                                        className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Apellido *</label>
+                                    <input 
+                                        type="text" 
+                                        value={clientInfo.apellido} 
+                                        onChange={(e) => setClientInfo({...clientInfo, apellido: e.target.value})} 
+                                        placeholder="Pérez" 
+                                        required
+                                        className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Teléfono */}
+                            <div>
+                                <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Teléfono *</label>
+                                <input 
+                                    type="tel" 
+                                    value={clientInfo.telefono} 
+                                    onChange={(e) => setClientInfo({...clientInfo, telefono: e.target.value})} 
+                                    placeholder="5512345678" 
+                                    required
+                                    className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                />
+                            </div>
+
+                            {/* Fecha de Nacimiento y Género */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Fecha de Nacimiento *</label>
+                                    <input 
+                                        type="date" 
+                                        value={clientInfo.fechaNacimiento} 
+                                        onChange={(e) => setClientInfo({...clientInfo, fechaNacimiento: e.target.value})} 
+                                        required
+                                        className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Género *</label>
+                                    <select 
+                                        value={clientInfo.genero} 
+                                        onChange={(e) => setClientInfo({...clientInfo, genero: e.target.value})} 
+                                        required
+                                        className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                                    >
+                                        <option value="">Selecciona</option>
+                                        <option value="Masculino">Masculino</option>
+                                        <option value="Femenino">Femenino</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Dirección (Opcional) */}
+                            <div className="flex items-center gap-3 mb-2 mt-6">
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                                <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Dirección (Opcional)</h3>
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Calle y Número</label>
+                                <input 
+                                    type="text" 
+                                    value={clientInfo.calle} 
+                                    onChange={(e) => setClientInfo({...clientInfo, calle: e.target.value})} 
+                                    placeholder="Av. Principal 123" 
+                                    className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Ciudad</label>
+                                    <input 
+                                        type="text" 
+                                        value={clientInfo.ciudad} 
+                                        onChange={(e) => setClientInfo({...clientInfo, ciudad: e.target.value})} 
+                                        placeholder="CDMX" 
+                                        className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Estado</label>
+                                    <input 
+                                        type="text" 
+                                        value={clientInfo.estado} 
+                                        onChange={(e) => setClientInfo({...clientInfo, estado: e.target.value})} 
+                                        placeholder="CDMX" 
+                                        className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">C.P.</label>
+                                    <input 
+                                        type="text" 
+                                        value={clientInfo.codigoPostal} 
+                                        onChange={(e) => setClientInfo({...clientInfo, codigoPostal: e.target.value})} 
+                                        placeholder="01000" 
+                                        className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Contacto de Emergencia */}
+                            <div className="flex items-center gap-3 mb-2 mt-6">
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                                <h3 className="text-xs font-bold text-yellow-500 uppercase tracking-widest">Contacto de Emergencia</h3>
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Nombre del Contacto *</label>
+                                <input 
+                                    type="text" 
+                                    value={clientInfo.contactoEmergencia} 
+                                    onChange={(e) => setClientInfo({...clientInfo, contactoEmergencia: e.target.value})} 
+                                    placeholder="María Pérez" 
+                                    required
+                                    className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Teléfono de Emergencia *</label>
+                                <input 
+                                    type="tel" 
+                                    value={clientInfo.telefonoEmergencia} 
+                                    onChange={(e) => setClientInfo({...clientInfo, telefonoEmergencia: e.target.value})} 
+                                    placeholder="5598765432" 
+                                    required
+                                    className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                />
+                            </div>
+
+                            {/* Términos y Condiciones */}
+                            <div className="bg-yellow-900/10 border border-yellow-600/30 rounded-xl p-4 mt-6">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={clientInfo.aceptaTerminos} 
+                                        onChange={(e) => setClientInfo({...clientInfo, aceptaTerminos: e.target.checked})} 
+                                        required
+                                        className="mt-1 w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-yellow-500 focus:ring-yellow-500"
+                                    />
+                                    <span className="text-xs text-neutral-300">
+                                        Acepto los <button type="button" onClick={() => setCurrentPage('terms')} className="text-yellow-500 underline">Términos y Condiciones</button> y el <button type="button" onClick={() => setCurrentPage('privacy')} className="text-yellow-500 underline">Aviso de Privacidad</button> de Fit Sanctuary
+                                    </span>
+                                </label>
                             </div>
                         </div>
 
                         {!paymentMethod ? (
                             <div className="space-y-3">
                                 <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wide">Selecciona método de pago</h3>
-                                <button onClick={() => initPayment('stripe', selectedPlan)} className="w-full bg-white text-black p-4 rounded-xl flex items-center justify-between hover:bg-neutral-200 transition-colors">
+                                <button 
+                                    onClick={() => {
+                                        if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
+                                            alert('Por favor completa todos los campos obligatorios (*)');
+                                            return;
+                                        }
+                                        initPayment('stripe', selectedPlan);
+                                    }} 
+                                    className="w-full bg-white text-black p-4 rounded-xl flex items-center justify-between hover:bg-neutral-200 transition-colors"
+                                >
                                     <div className="text-left"><span className="block font-bold text-sm">Tarjeta Crédito/Débito</span><span className="text-[10px] text-neutral-600">Vía Stripe</span></div><ChevronRight className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => initPayment('mp', selectedPlan)} className="w-full bg-[#009EE3] text-white p-4 rounded-xl flex items-center justify-between hover:bg-[#008bd0] transition-colors">
+                                <button 
+                                    onClick={() => {
+                                        if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
+                                            alert('Por favor completa todos los campos obligatorios (*)');
+                                            return;
+                                        }
+                                        initPayment('mp', selectedPlan);
+                                    }} 
+                                    className="w-full bg-[#009EE3] text-white p-4 rounded-xl flex items-center justify-between hover:bg-[#008bd0] transition-colors"
+                                >
                                     <div className="text-left"><span className="block font-bold text-sm">Mercado Pago</span><span className="text-[10px] opacity-90">Tarjetas, Transferencia, Oxxo</span></div><ChevronRight className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => initPayment('paypal', selectedPlan)} className="w-full bg-[#003087] text-white p-4 rounded-xl flex items-center justify-between hover:bg-[#00256b] transition-colors">
+                                <button 
+                                    onClick={() => {
+                                        if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
+                                            alert('Por favor completa todos los campos obligatorios (*)');
+                                            return;
+                                        }
+                                        initPayment('paypal', selectedPlan);
+                                    }} 
+                                    className="w-full bg-[#003087] text-white p-4 rounded-xl flex items-center justify-between hover:bg-[#00256b] transition-colors"
+                                >
                                     <div className="text-left"><span className="block font-bold text-sm italic">PayPal</span><span className="text-[10px] opacity-80">Pago seguro internacional</span></div><ChevronRight className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => setPaymentMethod('transfer')} className="w-full bg-[#1a1a1a] border border-neutral-800 text-white p-4 rounded-xl flex items-center justify-between hover:border-yellow-500/50 transition-colors">
+                                <button 
+                                    onClick={() => {
+                                        if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
+                                            alert('Por favor completa todos los campos obligatorios (*)');
+                                            return;
+                                        }
+                                        setPaymentMethod('transfer');
+                                    }} 
+                                    className="w-full bg-[#1a1a1a] border border-neutral-800 text-white p-4 rounded-xl flex items-center justify-between hover:border-yellow-500/50 transition-colors"
+                                >
                                     <div className="text-left"><span className="block font-bold text-sm text-green-500">Transferencia Directa</span><span className="text-[10px] text-neutral-500">Sin comisiones extra</span></div><ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>

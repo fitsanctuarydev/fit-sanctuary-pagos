@@ -7,16 +7,31 @@ require('dotenv').config();
 
 const Stripe = require('stripe');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
+const admin = require('firebase-admin');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// --- FIREBASE ADMIN INITIALIZATION ---
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT) 
+  : require('./serviceAccountKey.json');
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
+
+const db = admin.firestore();
 
 // --- CONFIGURACIÓN ---
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const mpClient = process.env.MP_ACCESS_TOKEN ? new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN }) : null;
 const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
 const PAYPAL_API = process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+const CRM_API_URL = process.env.CRM_API_URL || 'https://fit-sanctuary-api.onrender.com';
 
 // 1. MERCADO PAGO (Preferencia con Validación)
 app.post('/api/mp/create-preference', async (req, res) => {
@@ -183,6 +198,158 @@ app.post('/api/paypal/capture-order', async (req, res) => {
       error: errorMsg,
       details: process.env.NODE_ENV === 'development' ? error.response?.data : undefined
     });
+  }
+});
+
+// ============================================
+// CRM INTEGRATION - CREATE CLIENT
+// ============================================
+app.post('/api/crm/create-client', async (req, res) => {
+  try {
+    const {
+      nombre,
+      apellido,
+      email,
+      telefono,
+      fechaNacimiento,
+      genero,
+      direccion,
+      contactoEmergencia,
+      telefonoEmergencia,
+      membershipType,
+      amount,
+      orderId
+    } = req.body;
+
+    // Validate required fields
+    if (!nombre || !apellido || !email || !telefono || !membershipType) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+
+    // Map product IDs to membership types
+    const membershipMapping = {
+      'm_est': 'estudiante',
+      'm_gen': 'general',
+      'p_tri': 'trimestral',
+      'p_sem': 'semestral',
+      'p_anu': 'anual',
+      'ai_01': 'paquete01',
+      'ai_02': 'paquete02',
+      'c_pil': 'pilates',
+      'c_hyr': 'hyrox'
+    };
+
+    const mappedMembershipType = membershipMapping[membershipType] || 'general';
+
+    // Check if client already exists
+    const existingClients = await db.collection('clients')
+      .where('email', '==', email)
+      .get();
+
+    let clientId;
+    let clientData;
+
+    if (!existingClients.empty) {
+      // Client exists, update membership
+      const existingClient = existingClients.docs[0];
+      clientId = existingClient.id;
+      clientData = existingClient.data();
+      
+      console.log(`✓ Cliente existente encontrado: ${email}`);
+    } else {
+      // Create new client in Firestore
+      clientData = {
+        nombre,
+        apellido,
+        email,
+        telefono,
+        fechaNacimiento: fechaNacimiento || '',
+        genero: genero || '',
+        direccion: direccion || {},
+        contactoEmergencia: contactoEmergencia || '',
+        telefonoEmergencia: telefonoEmergencia || '',
+        fechaRegistro: new Date().toISOString(),
+        activo: true
+      };
+
+      const clientRef = await db.collection('clients').add(clientData);
+      clientId = clientRef.id;
+      
+      console.log(`✓ Nuevo cliente creado en Firebase: ${clientId}`);
+
+      // Send invitation email to members portal
+      try {
+        await axios.post(`${CRM_API_URL}/api/clients/send-invitation`, {
+          email,
+          nombre,
+          apellido
+        });
+        console.log(`✓ Email de invitación enviado a: ${email}`);
+      } catch (emailError) {
+        console.error('Error enviando invitación:', emailError.message);
+      }
+    }
+
+    // Calculate membership end date based on type
+    const duracionDias = {
+      'estudiante': 30,
+      'general': 30,
+      'trimestral': 90,
+      'semestral': 180,
+      'anual': 365,
+      'paquete01': 30,
+      'paquete02': 30,
+      'pilates': 30,
+      'hyrox': 30
+    };
+
+    const dias = duracionDias[mappedMembershipType] || 30;
+    const fechaInicio = new Date();
+    const fechaFin = new Date();
+    fechaFin.setDate(fechaFin.getDate() + dias);
+
+    // Create membership
+    const membershipData = {
+      clienteId: clientId,
+      clienteNombre: `${nombre} ${apellido}`,
+      tipo: mappedMembershipType,
+      fechaInicio: fechaInicio.toISOString(),
+      fechaFin: fechaFin.toISOString(),
+      activa: true,
+      pagoId: orderId || 'N/A',
+      monto: amount || 0,
+      fechaCreacion: new Date().toISOString()
+    };
+
+    const membershipRef = await db.collection('memberships').add(membershipData);
+    console.log(`✓ Membresía creada: ${membershipRef.id}`);
+
+    // Create payment record
+    const paymentData = {
+      clienteId: clientId,
+      clienteName: `${nombre} ${apellido}`,
+      monto: amount || 0,
+      metodo: 'online_payment',
+      estado: 'completado',
+      orderId: orderId || 'N/A',
+      fecha: new Date().toISOString(),
+      tipo: mappedMembershipType
+    };
+
+    const paymentRef = await db.collection('payments').add(paymentData);
+    console.log(`✓ Pago registrado: ${paymentRef.id}`);
+
+    res.json({
+      ok: true,
+      clientId,
+      membershipId: membershipRef.id,
+      paymentId: paymentRef.id,
+      message: 'Cliente creado y membresía activada exitosamente'
+    });
+
+  } catch (error) {
+    console.error('❌ Error creando cliente en CRM:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

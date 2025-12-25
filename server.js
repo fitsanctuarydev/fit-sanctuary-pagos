@@ -14,17 +14,35 @@ app.use(cors());
 app.use(express.json());
 
 // --- FIREBASE ADMIN INITIALIZATION ---
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT) 
-  : require('./serviceAccountKey.json');
+let db = null;
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+try {
+  let serviceAccount;
+  
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    // Use environment variable (production)
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } else {
+    // Try to load from file (local development)
+    try {
+      serviceAccount = require('./serviceAccountKey.json');
+    } catch (err) {
+      console.log('⚠️  Firebase credentials not found. CRM integration will be disabled.');
+      serviceAccount = null;
+    }
+  }
+
+  if (serviceAccount && !admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    db = admin.firestore();
+    console.log('✓ Firebase Admin initialized successfully');
+  }
+} catch (error) {
+  console.error('⚠️  Error initializing Firebase:', error.message);
+  console.log('CRM integration will be disabled.');
 }
-
-const db = admin.firestore();
 
 // --- CONFIGURACIÓN ---
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -205,6 +223,15 @@ app.post('/api/paypal/capture-order', async (req, res) => {
 // CRM INTEGRATION - CREATE CLIENT
 // ============================================
 app.post('/api/crm/create-client', async (req, res) => {
+  // Check if Firebase is initialized
+  if (!db) {
+    console.log('⚠️  Firebase not initialized, skipping CRM integration');
+    return res.json({ 
+      ok: false, 
+      message: 'CRM integration not available - payment processed but client not created' 
+    });
+  }
+
   try {
     const {
       nombre,

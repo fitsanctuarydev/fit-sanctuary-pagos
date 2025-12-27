@@ -170,61 +170,67 @@ function App() {
 
     const handleSuccess = async (paymentId = 'N/A') => {
         setView('success');
-        try {
-            console.log(`📧 Creando cliente en CRM y enviando confirmación para orden: ${paymentId}`);
-            
-            // Create client in CRM
-            const clientData = {
-                nombre: clientInfo.nombre,
-                apellido: clientInfo.apellido,
-                email: email,
-                telefono: clientInfo.telefono,
-                fechaNacimiento: clientInfo.fechaNacimiento,
-                genero: clientInfo.genero,
-                direccion: {
-                    calle: clientInfo.calle,
-                    ciudad: clientInfo.ciudad,
-                    estado: clientInfo.estado,
-                    codigoPostal: clientInfo.codigoPostal
-                },
-                contactoEmergencia: clientInfo.contactoEmergencia,
-                telefonoEmergencia: clientInfo.telefonoEmergencia,
-                membershipType: selectedPlan.id,
-                amount: getTotal(selectedPlan.price),
-                orderId: paymentId
-            };
-            
-            const crmResponse = await fetch('/api/crm/create-client', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(clientData)
-            });
-            
-            if (!crmResponse.ok) {
-                console.error('Error creando cliente en CRM:', await crmResponse.text());
+        
+        // Ejecutar en background sin bloquear la UI
+        (async () => {
+            try {
+                console.log(`📧 Creando cliente en CRM y enviando confirmación para orden: ${paymentId}`);
+                
+                // Create client in CRM
+                const clientData = {
+                    nombre: clientInfo.nombre,
+                    apellido: clientInfo.apellido,
+                    email: email,
+                    telefono: clientInfo.telefono,
+                    fechaNacimiento: clientInfo.fechaNacimiento,
+                    genero: clientInfo.genero,
+                    direccion: {
+                        calle: clientInfo.calle,
+                        ciudad: clientInfo.ciudad,
+                        estado: clientInfo.estado,
+                        codigoPostal: clientInfo.codigoPostal
+                    },
+                    contactoEmergencia: clientInfo.contactoEmergencia,
+                    telefonoEmergencia: clientInfo.telefonoEmergencia,
+                    membershipType: selectedPlan.id,
+                    amount: getTotal(selectedPlan.price),
+                    orderId: paymentId
+                };
+                
+                const crmResponse = await fetch('/api/crm/create-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(clientData)
+                });
+                
+                if (!crmResponse.ok) {
+                    const errorText = await crmResponse.text();
+                    console.error('Error creando cliente en CRM:', errorText);
+                    // No lanzamos error, solo logueamos
+                }
+                
+                const emailResponse = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        email: email, 
+                        plan: selectedPlan.name, 
+                        price: getTotal(selectedPlan.price),
+                        orderId: paymentId !== 'N/A' ? paymentId : Math.floor(Math.random()*10000)
+                    })
+                });
+                
+                const emailData = await emailResponse.json();
+                
+                if (emailData.success) {
+                    console.log('✅ Email de confirmación enviado correctamente');
+                } else {
+                    console.warn('⚠️ Problema al enviar email:', emailData.warning || emailData.message);
+                }
+            } catch (e) { 
+                console.error("⚠️ Error en proceso post-pago (no crítico, pago confirmado):", e);
             }
-            
-            const emailResponse = await fetch('/api/send-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    email: email, 
-                    plan: selectedPlan.name, 
-                    price: getTotal(selectedPlan.price),
-                    orderId: paymentId !== 'N/A' ? paymentId : Math.floor(Math.random()*10000)
-                })
-            });
-            
-            const emailData = await emailResponse.json();
-            
-            if (emailData.success) {
-                console.log('✅ Email de confirmación enviado correctamente');
-            } else {
-                console.warn('⚠️ Problema al enviar email:', emailData.warning || emailData.message);
-            }
-        } catch (e) { 
-            console.error("⚠️ Error enviando correo (no crítico, pago confirmado):", e);
-        }
+        })();
     };
 
     const initPayment = async (method, plan) => {
@@ -252,29 +258,45 @@ function App() {
                 setMpError(null);
                 setMpLoading(true);
                 
-                const res = await fetch('/api/mp/create-preference', {
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        title: plan.name, 
-                        price: total,
-                        orderId: orderId,
-                        userEmail: email
-                    })
-                });
-                
-                if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}));
-                    throw new Error(errorData.error || `Error ${res.status}`);
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+                    
+                    const res = await fetch('/api/mp/create-preference', {
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            title: plan.name, 
+                            price: total,
+                            orderId: orderId,
+                            userEmail: email
+                        }),
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({}));
+                        throw new Error(errorData.error || `Error ${res.status}`);
+                    }
+                    
+                    const data = await res.json();
+                    if(!data.id) throw new Error("No se recibió ID de preferencia");
+                    
+                    console.log('✓ Preferencia MP creada:', data.id);
+                    setMpPreferenceId(data.id);
+                    setMpAmount(data.amount || total);
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        setMpError('Tiempo de espera agotado. Por favor intenta de nuevo.');
+                    } else {
+                        setMpError(error.message || 'Error al iniciar pago');
+                    }
+                    console.error('Error iniciando pago MP:', error);
+                } finally {
+                    setMpLoading(false);
                 }
-                
-                const data = await res.json();
-                if(!data.id) throw new Error("No se recibió ID de preferencia");
-                
-                console.log('✓ Preferencia MP creada:', data.id);
-                setMpPreferenceId(data.id);
-                setMpAmount(data.amount || total);
-                setMpLoading(false);
             }
         } catch (e) {
             console.error('Error iniciando pago:', e);

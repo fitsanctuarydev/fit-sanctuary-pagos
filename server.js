@@ -252,16 +252,30 @@ app.post('/api/crm/create-client', async (req, res) => {
 
     let clientId;
     let clientData;
+    let isNewClient = false;
 
     if (!existingClients.empty) {
-      // Client exists, update membership
+      // Client exists, use existing data
       const existingClient = existingClients.docs[0];
       clientId = existingClient.id;
       clientData = existingClient.data();
       
-      console.log(`✓ Cliente existente encontrado: ${email}`);
+      console.log(`✓ Cliente existente encontrado: ${email} (ID: ${clientId})`);
+      
+      // Opcionalmente actualizar datos si son diferentes
+      const updates = {};
+      if (telefono && telefono !== clientData.telefono) updates.telefono = telefono;
+      if (direccion && Object.keys(direccion).length > 0) updates.direccion = direccion;
+      if (contactoEmergencia) updates.contactoEmergencia = contactoEmergencia;
+      if (telefonoEmergencia) updates.telefonoEmergencia = telefonoEmergencia;
+      
+      if (Object.keys(updates).length > 0) {
+        await db.collection('clients').doc(clientId).update(updates);
+        console.log(`✓ Datos del cliente actualizados: ${clientId}`);
+      }
     } else {
       // Create new client in Firestore
+      isNewClient = true;
       clientData = {
         nombre,
         apellido,
@@ -281,16 +295,17 @@ app.post('/api/crm/create-client', async (req, res) => {
       
       console.log(`✓ Nuevo cliente creado en Firebase: ${clientId}`);
 
-      // Send invitation email to members portal
+      // Send invitation email to members portal (solo para nuevos clientes)
       try {
         await axios.post(`${CRM_API_URL}/api/clients/send-invitation`, {
           email,
           nombre,
           apellido
-        });
+        }, { timeout: 10000 }); // 10 segundos timeout
         console.log(`✓ Email de invitación enviado a: ${email}`);
       } catch (emailError) {
-        console.error('Error enviando invitación:', emailError.message);
+        console.error('⚠️ Error enviando invitación (no crítico):', emailError.message);
+        // No lanzamos error, solo logueamos
       }
     }
 
@@ -312,14 +327,30 @@ app.post('/api/crm/create-client', async (req, res) => {
     const fechaFin = new Date();
     fechaFin.setDate(fechaFin.getDate() + dias);
 
-    // Create membership
+    // Desactivar membresías anteriores del mismo cliente
+    const oldMemberships = await db.collection('memberships')
+      .where('clienteId', '==', clientId)
+      .where('estado', '==', 'activa')
+      .get();
+
+    const batch = db.batch();
+    oldMemberships.forEach(doc => {
+      batch.update(doc.ref, { estado: 'reemplazada', fechaReemplazo: new Date().toISOString() });
+    });
+    await batch.commit();
+    
+    if (!oldMemberships.empty) {
+      console.log(`✓ ${oldMemberships.size} membresía(s) anterior(es) desactivada(s)`);
+    }
+
+    // Create new membership
     const membershipData = {
       clienteId: clientId,
       clienteNombre: `${nombre} ${apellido}`,
       tipo: mappedMembershipType,
       fechaInicio: fechaInicio.toISOString(),
       fechaFin: fechaFin.toISOString(),
-      activa: true,
+      estado: 'activa',
       pagoId: orderId || 'N/A',
       monto: amount || 0,
       fechaCreacion: new Date().toISOString()
@@ -346,14 +377,18 @@ app.post('/api/crm/create-client', async (req, res) => {
     res.json({
       ok: true,
       clientId,
+      isNewClient,
       membershipId: membershipRef.id,
       paymentId: paymentRef.id,
-      message: 'Cliente creado y membresía activada exitosamente'
+      message: isNewClient ? 'Cliente creado y membresía activada exitosamente' : 'Membresía renovada exitosamente'
     });
 
   } catch (error) {
-    console.error('❌ Error creando cliente en CRM:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error creando/actualizando cliente en CRM:', error);
+    res.status(500).json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

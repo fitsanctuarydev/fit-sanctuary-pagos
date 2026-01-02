@@ -100,18 +100,96 @@ app.post('/api/mp/create-preference', async (req, res) => {
   }
 });
 
-// 2. STRIPE
+// 2. STRIPE - Suscripciones y Pagos
 app.post('/api/stripe/create-intent', async (req, res) => {
   if (!stripe) return res.status(500).json({ error: "Falta STRIPE_SECRET_KEY" });
   try {
-    const { amount } = req.body;
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100),
-      currency: 'mxn',
-      automatic_payment_methods: { enabled: true },
-    });
-    res.send({ clientSecret: paymentIntent.client_secret });
+    const { amount, email, nombre, apellido, productId, productName } = req.body;
+    
+    // Validación
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ error: "Monto inválido" });
+    }
+
+    // Determinar si debe ser suscripción (para membresías mensuales)
+    const isMonthlyMembership = productId && (productId === 'm_est' || productId === 'm_gen' || 
+                                               productId === 'ai_01' || productId === 'ai_02' || 
+                                               productId === 'c_pil' || productId === 'c_hyr');
+    
+    if (isMonthlyMembership && email) {
+      // CREAR SUSCRIPCIÓN PARA MEMBRESÍAS MENSUALES
+      console.log(`🔄 Creando suscripción mensual para ${email}`);
+      
+      // Buscar o crear cliente en Stripe
+      let customer;
+      const existingCustomers = await stripe.customers.list({ email, limit: 1 });
+      
+      if (existingCustomers.data.length > 0) {
+        customer = existingCustomers.data[0];
+        console.log(`✓ Cliente existente encontrado: ${customer.id}`);
+      } else {
+        customer = await stripe.customers.create({
+          email,
+          name: `${nombre || ''} ${apellido || ''}`.trim(),
+          metadata: { source: 'fit_sanctuary_pagos' }
+        });
+        console.log(`✓ Nuevo cliente Stripe creado: ${customer.id}`);
+      }
+      
+      // Crear precio recurrente para esta suscripción
+      const price = await stripe.prices.create({
+        unit_amount: Math.round(amount * 100),
+        currency: 'mxn',
+        recurring: { interval: 'month' },
+        product_data: {
+          name: productName || 'Membresía Fit Sanctuary',
+          metadata: { productId }
+        }
+      });
+      
+      // Crear suscripción
+      const subscription = await stripe.subscriptions.create({
+        customer: customer.id,
+        items: [{ price: price.id }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent'],
+        metadata: {
+          productId,
+          productName: productName || 'Membresía',
+          source: 'fit_sanctuary'
+        }
+      });
+      
+      console.log(`✓ Suscripción creada: ${subscription.id}`);
+      
+      return res.json({
+        clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+        subscriptionId: subscription.id,
+        customerId: customer.id,
+        isSubscription: true
+      });
+    } else {
+      // PAGO ÚNICO PARA PAQUETES MULTI-MES
+      console.log(`💳 Creando pago único de $${amount} MXN`);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100),
+        currency: 'mxn',
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          productId: productId || 'unknown',
+          productName: productName || 'Paquete',
+          source: 'fit_sanctuary'
+        }
+      });
+      
+      return res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        isSubscription: false
+      });
+    }
   } catch (error) {
+    console.error('❌ Error Stripe:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -277,8 +355,8 @@ app.post('/api/crm/create-client', async (req, res) => {
       // Create new client in Firestore
       isNewClient = true;
       clientData = {
-        nombre,
-        apellido,
+        nombre: `${nombre} ${apellido}`, // Guardar nombre completo concatenado
+        apellido: apellido, // También guardar apellido por separado para compatibilidad
         email,
         telefono,
         fechaNacimiento: fechaNacimiento || '',

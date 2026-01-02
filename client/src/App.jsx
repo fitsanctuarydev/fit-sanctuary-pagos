@@ -245,11 +245,23 @@ function App() {
             if (method === 'stripe') {
                 const res = await fetch('/api/stripe/create-intent', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: total })
+                    body: JSON.stringify({ 
+                        amount: total,
+                        email: email,
+                        nombre: clientInfo.nombre,
+                        apellido: clientInfo.apellido,
+                        productId: plan.id,
+                        productName: plan.name
+                    })
                 });
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
                 setStripeClientSecret(data.clientSecret);
+                
+                // Mostrar mensaje si es suscripción
+                if (data.isSubscription) {
+                    console.log('✓ Suscripción mensual configurada - se cobrará automáticamente cada mes');
+                }
             }
             
             if (method === 'mp') {

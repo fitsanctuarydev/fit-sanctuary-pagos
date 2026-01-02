@@ -19,15 +19,15 @@ if (MP_KEY && !MP_KEY.includes('TU_CLAVE')) {
 }
 
 const products = [
-    { id: 'm_est', name: 'Mensualidad Estudiantes', price: 449, category: 'Mensualidad', desc: 'Requiere credencial vigente. Incluye: Cardio y Pesas.' },
-    { id: 'm_gen', name: 'Mensualidad General', price: 499, category: 'Mensualidad', desc: 'Incluye: Cardio, Pesas, Zumba y Funcional.' },
-    { id: 'p_tri', name: 'Paquete 3 Meses', price: 1250, category: 'Paquetes', desc: 'Preventa. Incluye: Cardio, Pesas, Zumba y Funcional.', tag: 'Ahorro' },
-    { id: 'p_sem', name: 'Paquete 6 Meses', price: 2400, category: 'Paquetes', desc: 'Preventa. Incluye: Cardio, Pesas, Zumba y Funcional.', tag: 'Popular', highlight: true },
-    { id: 'p_anu', name: 'Paquete 12 Meses', price: 4600, category: 'Paquetes', desc: 'Preventa. Incluye: Cardio, Pesas, Zumba y Funcional.', tag: 'Mejor Valor' },
-    { id: 'ai_01', name: 'Paquete 01 (Todo Incluido)', price: 1350, category: 'All Inclusive', desc: 'Base + 2 clases/semana opcionales (Pilates/Hyrox). Costo mensual.' },
-    { id: 'ai_02', name: 'Paquete 02 (Todo Incluido)', price: 1500, category: 'All Inclusive', desc: 'Base + 3 clases/semana opcionales (Pilates/Hyrox). Costo mensual.', highlight: true },
-    { id: 'c_pil', name: 'Pack Pilates', price: 1000, category: 'Clases', desc: '3 clases a la semana.' },
-    { id: 'c_hyr', name: 'Pack Hyrox', price: 499, category: 'Clases', desc: '4 clases a la semana.' },
+    { id: 'm_est', name: 'Mensualidad Estudiantes', price: 519, category: 'Mensualidad', desc: 'Requiere credencial vigente. Incluye: Cardio y Pesas.' },
+    { id: 'm_gen', name: 'Mensualidad General', price: 579, category: 'Mensualidad', desc: 'Incluye: Cardio, Pesas, Zumba y Funcional.' },
+    { id: 'p_tri', name: 'Paquete 3 Meses', price: 1449, category: 'Paquetes', desc: 'Incluye: Cardio, Pesas, Zumba y Funcional.', tag: 'Ahorro' },
+    { id: 'p_sem', name: 'Paquete 6 Meses', price: 2799, category: 'Paquetes', desc: 'Incluye: Cardio, Pesas, Zumba y Funcional.', tag: 'Popular', highlight: true },
+    { id: 'p_anu', name: 'Paquete 12 Meses', price: 5299, category: 'Paquetes', desc: 'Incluye: Cardio, Pesas, Zumba y Funcional.', tag: 'Mejor Valor' },
+    { id: 'ai_01', name: 'Paquete 01 (Todo Incluido)', price: 1549, category: 'All Inclusive', desc: 'Base + 2 clases/semana opcionales (Pilates/Hyrox). Costo mensual.' },
+    { id: 'ai_02', name: 'Paquete 02 (Todo Incluido)', price: 1699, category: 'All Inclusive', desc: 'Base + 3 clases/semana opcionales (Pilates/Hyrox). Costo mensual.', highlight: true },
+    { id: 'c_pil', name: 'Pack Pilates', price: 1149, category: 'Clases', desc: '3 clases a la semana.' },
+    { id: 'c_hyr', name: 'Pack Hyrox', price: 579, category: 'Clases', desc: '4 clases a la semana.' },
 ];
 
 const Logos = {
@@ -342,7 +342,7 @@ function App() {
                     <div className="animate-fade-in">
                         <div className="text-center mb-8">
                             <div className="inline-block bg-yellow-500 text-black font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider mb-2">Del 05 al 20 Dic 2025</div>
-                            <h1 className="text-2xl font-black uppercase text-white mb-2">Preventa Exclusiva</h1>
+                            <h1 className="text-2xl font-black uppercase text-white mb-2">Membresías Fit Sanctuary</h1>
                             <p className="text-neutral-400 text-xs max-w-xs mx-auto">Precios especiales por apertura.</p>
                         </div>
                         {['Mensualidad', 'Paquetes', 'All Inclusive', 'Clases'].map(category => (

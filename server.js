@@ -397,7 +397,9 @@ app.post('/api/crm/create-client', async (req, res) => {
       'paquete01': 30,
       'paquete02': 30,
       'pilates': 30,
-      'hyrox': 30
+      'pilates_2x': 30,
+      'hyrox': 30,
+      'grupal_3m': 90
     };
 
     const dias = duracionDias[mappedMembershipType] || 30;

@@ -307,6 +307,20 @@ app.post('/api/crm/create-client', async (req, res) => {
     if (!nombre || !apellido || !email || !telefono || !membershipType) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
+    
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      console.error(`❌ Email mal formateado: "${email}"`);
+      return res.status(400).json({ 
+        error: 'invalid_email_format',
+        message: 'El email proporcionado no tiene un formato válido'
+      });
+    }
+    
+    // Limpiar y normalizar el email
+    const cleanEmail = email.trim().toLowerCase();
+    console.log(`📧 Email limpio: ${cleanEmail}`);
 
     // Map product IDs to membership types
     const membershipMapping = {
@@ -325,7 +339,7 @@ app.post('/api/crm/create-client', async (req, res) => {
 
     // Check if client already exists
     const existingClients = await db.collection('clients')
-      .where('email', '==', email)
+      .where('email', '==', cleanEmail)
       .get();
 
     let clientId;
@@ -338,7 +352,7 @@ app.post('/api/crm/create-client', async (req, res) => {
       clientId = existingClient.id;
       clientData = existingClient.data();
       
-      console.log(`✓ Cliente existente encontrado: ${email} (ID: ${clientId})`);
+      console.log(`✓ Cliente existente encontrado: ${cleanEmail} (ID: ${clientId})`);
       
       // Opcionalmente actualizar datos si son diferentes
       const updates = {};
@@ -357,7 +371,7 @@ app.post('/api/crm/create-client', async (req, res) => {
       clientData = {
         nombre: `${nombre} ${apellido}`, // Guardar nombre completo concatenado
         apellido: apellido, // También guardar apellido por separado para compatibilidad
-        email,
+        email: cleanEmail,
         telefono,
         fechaNacimiento: fechaNacimiento || '',
         genero: genero || '',
@@ -376,11 +390,11 @@ app.post('/api/crm/create-client', async (req, res) => {
       // Send invitation email to members portal (solo para nuevos clientes)
       try {
         await axios.post(`${CRM_API_URL}/api/clients/send-invitation`, {
-          email,
+          email: cleanEmail,
           nombre,
           apellido
         }, { timeout: 10000 }); // 10 segundos timeout
-        console.log(`✓ Email de invitación enviado a: ${email}`);
+        console.log(`✓ Email de invitación enviado a: ${cleanEmail}`);
       } catch (emailError) {
         console.error('⚠️ Error enviando invitación (no crítico):', emailError.message);
         // No lanzamos error, solo logueamos

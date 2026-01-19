@@ -3,7 +3,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { ShieldCheck, Lock, ArrowLeft, CheckCircle, Clock, MapPin, ChevronRight, UploadCloud, MessageCircle, Banknote, CreditCard, Mail, AlertCircle, ExternalLink } from 'lucide-react';
+import { ShieldCheck, Lock, ArrowLeft, CheckCircle, Clock, MapPin, ChevronRight, UploadCloud, MessageCircle, Banknote, CreditCard, Mail, AlertCircle, ExternalLink, Instagram, Facebook, Phone, Navigation, ShoppingBag } from 'lucide-react';
 import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import RefundPolicy from './pages/RefundPolicy';
@@ -27,7 +27,7 @@ const products = [
     { id: 'ai_01', name: 'Paquete 01 (Todo Incluido)', price: 1549, category: 'All Inclusive', desc: 'Base + 2 clases/semana opcionales (Pilates/Hyrox). Costo mensual.' },
     { id: 'ai_02', name: 'Paquete 02 (Todo Incluido)', price: 1699, category: 'All Inclusive', desc: 'Base + 3 clases/semana opcionales (Pilates/Hyrox). Costo mensual.', highlight: true },
     { id: 'c_pil', name: 'Pack Pilates', price: 1149, category: 'Clases', desc: '3 clases a la semana.' },
-    { id: 'c_pil2', name: 'Pack Pilates 2x', price: 830, category: 'Clases', desc: 'Solo Pilates - 2 clases a la semana.' },
+    { id: 'c_pil2', name: 'Pack Pilates 2x', price: 840, category: 'Clases', desc: 'Solo Pilates - 2 clases a la semana.' },
     { id: 'c_hyr', name: 'Pack Hyrox', price: 579, category: 'Clases', desc: '4 clases a la semana.' },
     { id: 'grp_3m', name: 'Plan Grupal 3 Meses', price: 1249, category: 'Grupales', desc: 'Para 3 personas - $1,249 c/u por 3 meses. ¡Entrena con amigos!', tag: 'Nuevo', highlight: true },
 ];
@@ -71,11 +71,11 @@ const StripeForm = ({ onSuccess }) => {
 };
 
 function App() {
-    const [view, setView] = useState('shop');
+    const [view, setView] = useState('linkinbio'); // Cambiamos vista inicial
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [currentPage, setCurrentPage] = useState('shop'); // 'shop', 'terms', 'privacy', 'refund'
+    const [currentPage, setCurrentPage] = useState('main'); // Cambiamos de 'shop' a 'main'
     const [fileUploaded, setFileUploaded] = useState(false);
     const [email, setEmail] = useState('');
     const [orderId, setOrderId] = useState(null);
@@ -337,21 +337,167 @@ function App() {
             {currentPage === 'privacy' && <PrivacyPolicy />}
             {currentPage === 'refund' && <RefundPolicy />}
 
-            {currentPage === 'shop' && (<>
+            {currentPage === 'main' && (<>
 
             <header className="fixed top-0 w-full z-50 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-white/5">
                 <div className="max-w-xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('shop')}>
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => {setView('linkinbio'); setCurrentPage('main');}}>
                         <div className="w-8 h-8 rounded-full bg-yellow-600/10 flex items-center justify-center border border-yellow-600/30 overflow-hidden">
                             <img src="/assets/icono.png" alt="FS" className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
                         </div>
                         <span className="font-bold uppercase tracking-wider text-sm">Fit Sanctuary</span>
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] text-green-500 bg-green-900/20 px-2 py-1 rounded-full border border-green-500/20"><Lock className="w-3 h-3" /><span>Pago Seguro</span></div>
+                    <div className="flex items-center gap-3">
+                        {view !== 'linkinbio' && (
+                            <button onClick={() => {setView('linkinbio'); setCurrentPage('main');}} className="text-xs text-neutral-400 hover:text-yellow-500 transition-colors">
+                                Inicio
+                            </button>
+                        )}
+                        <div className="flex items-center gap-1 text-[10px] text-green-500 bg-green-900/20 px-2 py-1 rounded-full border border-green-500/20">
+                            <Lock className="w-3 h-3" />
+                            <span>Pago Seguro</span>
+                        </div>
+                    </div>
                 </div>
             </header>
 
             <main className="pt-24 px-4 max-w-xl mx-auto relative z-10">
+                {/* Link in Bio Section */}
+                {view === 'linkinbio' && (
+                    <div className="animate-fade-in">
+                        {/* Header */}
+                        <div className="text-center mb-8">
+                            <div className="mb-6">
+                                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 p-1">
+                                    <div className="w-full h-full rounded-full bg-[#0f0f0f] flex items-center justify-center overflow-hidden">
+                                        <img src="/assets/icono.png" alt="Fit Sanctuary" className="w-16 h-16 object-cover" onError={(e) => e.target.style.display = 'none'} />
+                                    </div>
+                                </div>
+                                <h1 className="text-2xl font-black uppercase text-white mb-2">Fit Sanctuary</h1>
+                                <p className="text-yellow-500 text-sm font-bold mb-1">Studio de Fitness Premium</p>
+                                <div className="flex items-center justify-center gap-2 mb-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    <span className="text-xs text-green-500 font-bold">ABIERTO</span>
+                                </div>
+                                <p className="text-neutral-400 text-xs max-w-sm mx-auto">Tu destino para el entrenamiento integral. Cardio, pesas, clases grupales y más.</p>
+                            </div>
+                        </div>
+
+                        {/* Redes Sociales */}
+                        <div className="mb-8">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                                <h3 className="text-xs font-bold text-yellow-500 uppercase tracking-widest">Síguenos</h3>
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                {/* Facebook */}
+                                <a href="https://www.facebook.com/fitsanctuarymx/" target="_blank" rel="noopener noreferrer" 
+                                   className="bg-[#181818] border border-neutral-800 rounded-xl p-4 text-center hover:border-blue-500/50 transition-colors active:scale-95">
+                                    <Facebook className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                                    <p className="text-xs font-bold text-white">Facebook</p>
+                                </a>
+                                
+                                {/* Instagram */}
+                                <a href="https://www.instagram.com/fit.sanctuary.mx/" target="_blank" rel="noopener noreferrer" 
+                                   className="bg-[#181818] border border-neutral-800 rounded-xl p-4 text-center hover:border-pink-500/50 transition-colors active:scale-95">
+                                    <Instagram className="w-8 h-8 text-pink-500 mx-auto mb-2" />
+                                    <p className="text-xs font-bold text-white">Instagram</p>
+                                </a>
+                                
+                                {/* WhatsApp */}
+                                <a href="https://wa.me/525533727291" target="_blank" rel="noopener noreferrer" 
+                                   className="bg-[#181818] border border-neutral-800 rounded-xl p-4 text-center hover:border-green-500/50 transition-colors active:scale-95">
+                                    <MessageCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                                    <p className="text-xs font-bold text-white">WhatsApp</p>
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Ubicación */}
+                        <div className="mb-8">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                                <h3 className="text-xs font-bold text-yellow-500 uppercase tracking-widest">Ubicación</h3>
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                            </div>
+                            
+                            {/* Información de ubicación */}
+                            <div className="bg-[#181818] border border-neutral-800 rounded-xl p-5 mb-4">
+                                <div className="flex items-start gap-4">
+                                    <MapPin className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+                                    <div className="flex-1">
+                                        <h4 className="text-white font-bold mb-2">Visítanos</h4>
+                                        <p className="text-sm text-neutral-300 mb-3">Blvrd Aldama 1410, Arcadia, 75760 Tehuacán, Pue.</p>
+                                        
+                                        {/* Horarios */}
+                                        <div className="mb-3 p-3 bg-neutral-900/50 rounded-lg">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Clock className="w-4 h-4 text-yellow-500" />
+                                                <span className="text-xs font-bold text-yellow-500 uppercase tracking-wider">Horarios</span>
+                                            </div>
+                                            <div className="text-xs text-neutral-300 space-y-1">
+                                                <div className="flex justify-between">
+                                                    <span>Lun - Vie:</span>
+                                                    <span>6:00 - 22:00</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>Sábado:</span>
+                                                    <span>7:00 - 20:00</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>Domingo:</span>
+                                                    <span>8:00 - 18:00</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex gap-2">
+                                            <a href="https://maps.app.goo.gl/GvpcXuGPsujhh1ay8" target="_blank" rel="noopener noreferrer"
+                                               className="bg-yellow-500 text-black text-xs font-bold px-3 py-2 rounded-lg hover:bg-yellow-400 transition-colors flex items-center gap-1">
+                                                <Navigation className="w-3 h-3" />
+                                                Cómo llegar
+                                            </a>
+                                            <a href="https://wa.me/525533727291" target="_blank" rel="noopener noreferrer"
+                                               className="bg-green-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-green-500 transition-colors flex items-center gap-1">
+                                                <Phone className="w-3 h-3" />
+                                                Llamar
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Mapa embebido */}
+                            <div className="bg-[#181818] border border-neutral-800 rounded-xl p-2 overflow-hidden">
+                                <iframe 
+                                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4499.037692008081!2d-97.40861522419604!3d18.460374271009112!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85c5bd005d638d6f%3A0xd81c8e5e0d61bd30!2sFit%20Sanctuary%20Studio!5e1!3m2!1ses!2smx!4v1768786365560!5m2!1ses!2smx"
+                                    width="100%" 
+                                    height="200" 
+                                    style={{border: 0, borderRadius: '8px'}} 
+                                    allowFullScreen 
+                                    loading="lazy" 
+                                    referrerPolicy="no-referrer-when-downgrade"
+                                    className="rounded-lg"
+                                ></iframe>
+                            </div>
+                        </div>
+
+                        {/* Botón principal - Comprar Membresía */}
+                        <div className="sticky bottom-4 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-2xl p-1 shadow-xl">
+                            <button 
+                                onClick={() => setView('shop')} 
+                                className="w-full bg-black text-white font-black py-4 px-6 rounded-xl hover:bg-neutral-900 transition-colors flex items-center justify-center gap-3 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-yellow-400/10"></div>
+                                <ShoppingBag className="w-5 h-5" />
+                                <span className="text-lg">COMPRAR MEMBRESÍA</span>
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {view === 'shop' && (
                     <div className="animate-fade-in">
                         <div className="text-center mb-8">
@@ -385,7 +531,7 @@ function App() {
 
                 {view === 'checkout' && selectedPlan && (
                     <div className="animate-fade-in">
-                        <button onClick={() => { setView('shop'); setPaymentMethod(null); }} className="text-xs text-neutral-500 mb-6 hover:text-white flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Volver</button>
+                        <button onClick={() => { setView('shop'); setPaymentMethod(null); setCurrentPage('main'); }} className="text-xs text-neutral-500 mb-6 hover:text-white flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Volver</button>
                         
                         <div className="bg-[#181818] border border-neutral-800 rounded-xl p-5 mb-8 relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-600 to-yellow-400"></div>
@@ -772,8 +918,8 @@ function App() {
                         </div>
                         <h1 className="text-2xl font-black uppercase mb-2">¡Pago Confirmado!</h1>
                         <p className="text-neutral-400 text-sm mb-6">Revisa tu correo para más detalles de tu membresía.</p>
-                        <button onClick={() => setView('shop')} className="bg-yellow-500 text-black font-bold py-3 px-6 rounded-lg hover:bg-yellow-400 transition-colors">
-                            Volver al Shop
+                        <button onClick={() => {setView('linkinbio'); setCurrentPage('main');}} className="bg-yellow-500 text-black font-bold py-3 px-6 rounded-lg hover:bg-yellow-400 transition-colors">
+                            Volver al Inicio
                         </button>
                     </div>
                 )}

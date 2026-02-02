@@ -29,6 +29,7 @@ const products = [
     { id: 'c_pil', name: 'Pack Pilates', price: 1149, category: 'Clases', desc: '3 clases a la semana.' },
     { id: 'c_pil2', name: 'Pack Pilates 2x', price: 840, category: 'Clases', desc: 'Solo Pilates - 2 clases a la semana.' },
     { id: 'c_hyr', name: 'Pack Hyrox', price: 579, category: 'Clases', desc: '4 clases a la semana.' },
+    { id: 'clase_pilates', name: 'Clase de Pilates', price: 160, category: 'Clases', desc: 'Una clase de Pilates con reserva de horario.' },
     { id: 'grp_3m', name: 'Plan Grupal 3 Meses', price: 1249, category: 'Grupales', desc: 'Para 3 personas - $1,249 c/u por 3 meses. ¡Entrena con amigos!', tag: 'Nuevo', highlight: true },
 ];
 

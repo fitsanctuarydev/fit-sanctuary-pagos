@@ -196,6 +196,48 @@ function App() {
                 setView('checkout');
                 return;
             }
+
+            // 🔄 RENOVACIÓN: Procesar parámetros de renovación
+            const planParam = params.get('plan');
+            const clienteId = params.get('clienteId');
+            const clienteNombre = params.get('clienteNombre');
+            const esRenovacion = params.get('renovacion') === 'true';
+            const membershipId = params.get('membershipId');
+
+            if (esRenovacion && planParam) {
+                console.log('🔄 Renovación detectada:', { planParam, clienteId, clienteNombre, membershipId });
+                
+                // Buscar el plan en la lista de productos
+                const planSeleccionado = products.find(p => p.id === planParam);
+                
+                if (planSeleccionado) {
+                    // Pre-seleccionar el plan y cargar la información de renovación
+                    handleSelectPlan(planSeleccionado);
+                    
+                    // Guardar datos de renovación en localStorage para usarlos después
+                    localStorage.setItem('renovacionData', JSON.stringify({
+                        clienteId,
+                        clienteNombre,
+                        membershipId,
+                        esRenovacion: true,
+                        timestamp: Date.now()
+                    }));
+                    
+                    // Auto-llenar datos del cliente si están disponibles
+                    if (clienteNombre) {
+                        const [nombre, apellido] = clienteNombre.split(' ');
+                        setClientInfo(prev => ({
+                            ...prev,
+                            nombre: nombre || '',
+                            apellido: apellido || ''
+                        }));
+                    }
+                    
+                    console.log('✅ Plan de renovación cargado:', planSeleccionado.name);
+                } else {
+                    console.warn('⚠️ Plan de renovación no encontrado:', planParam);
+                }
+            }
         } catch (err) {
             // ignore and keep default view
             console.debug('URL parse error', err);
@@ -209,6 +251,11 @@ function App() {
         (async () => {
             try {
                 console.log(`📧 Creando cliente en CRM y enviando confirmación para orden: ${paymentId}`);
+                
+                // Recuperar datos de renovación si existen
+                const renovacionDataStr = localStorage.getItem('renovacionData');
+                const renovacionData = renovacionDataStr ? JSON.parse(renovacionDataStr) : null;
+                const esRenovacion = renovacionData?.esRenovacion === true;
                 
                 // Create client in CRM
                 const clientData = {
@@ -229,6 +276,12 @@ function App() {
                     membershipType: selectedPlan.id,
                     amount: getTotal(selectedPlan.price),
                     orderId: paymentId,
+                    // 🔄 Incluir datos de renovación
+                    ...(esRenovacion && {
+                        esRenovacion: true,
+                        clienteId: renovacionData.clienteId,
+                        membershipId: renovacionData.membershipId
+                    }),
                     // Agregar información de horario si es Clase de Pilates
                     ...(selectedPlan.id === 'clase_pilates' && selectedSchedule && {
                         scheduleId: selectedSchedule.id,
@@ -251,6 +304,8 @@ function App() {
                     const errorText = await crmResponse.text();
                     console.error('Error creando cliente en CRM:', errorText);
                     // No lanzamos error, solo logueamos
+                } else {
+                    console.log('✅ Datos de cliente/renovación guardados en CRM');
                 }
                 
                 const emailResponse = await fetch('/api/send-email', {
@@ -261,6 +316,9 @@ function App() {
                         plan: selectedPlan.name, 
                         price: getTotal(selectedPlan.price),
                         orderId: paymentId !== 'N/A' ? paymentId : Math.floor(Math.random()*10000),
+                        // 🔄 Incluir flag de renovación
+                        esRenovacion: esRenovacion,
+                        clienteNombre: renovacionData?.clienteNombre,
                         // Agregar horario en email si es disponible
                         ...(selectedPlan.id === 'clase_pilates' && selectedSchedule && {
                             scheduleInfo: {
@@ -280,6 +338,9 @@ function App() {
                 } else {
                     console.warn('⚠️ Problema al enviar email:', emailData.warning || emailData.message);
                 }
+                
+                // Limpiar datos de renovación
+                localStorage.removeItem('renovacionData');
             } catch (e) { 
                 console.error("⚠️ Error en proceso post-pago (no crítico, pago confirmado):", e);
             }

@@ -102,6 +102,10 @@ function App() {
     const [selectedSchedule, setSelectedSchedule] = useState(null);
     const [schedulesLoading, setSchedulesLoading] = useState(false);
     
+    // 🔄 Estado para renovación
+    const [esRenovacion, setEsRenovacion] = useState(false);
+    const [renovacionData, setRenovacionData] = useState(null);
+    
     // Estados API
     const [stripeClientSecret, setStripeClientSecret] = useState(null);
     const [mpPreferenceId, setMpPreferenceId] = useState(null);
@@ -201,10 +205,10 @@ function App() {
             const planParam = params.get('plan');
             const clienteId = params.get('clienteId');
             const clienteNombre = params.get('clienteNombre');
-            const esRenovacion = params.get('renovacion') === 'true';
+            const isRenovacion = params.get('renovacion') === 'true';
             const membershipId = params.get('membershipId');
 
-            if (esRenovacion && planParam) {
+            if (isRenovacion && planParam) {
                 console.log('🔄 Renovación detectada:', { planParam, clienteId, clienteNombre, membershipId });
                 
                 // Buscar el plan en la lista de productos
@@ -212,16 +216,20 @@ function App() {
                 
                 if (planSeleccionado) {
                     // Pre-seleccionar el plan y cargar la información de renovación
-                    handleSelectPlan(planSeleccionado);
+                    setSelectedPlan(planSeleccionado);
+                    setOrderId(generateOrderId());
+                    setEsRenovacion(true);
                     
-                    // Guardar datos de renovación en localStorage para usarlos después
-                    localStorage.setItem('renovacionData', JSON.stringify({
+                    // Guardar datos de renovación
+                    const renovData = {
                         clienteId,
                         clienteNombre,
                         membershipId,
                         esRenovacion: true,
                         timestamp: Date.now()
-                    }));
+                    };
+                    setRenovacionData(renovData);
+                    localStorage.setItem('renovacionData', JSON.stringify(renovData));
                     
                     // Auto-llenar datos del cliente si están disponibles
                     if (clienteNombre) {
@@ -232,6 +240,10 @@ function App() {
                             apellido: apellido || ''
                         }));
                     }
+                    
+                    // Ir directamente a checkout
+                    setView('checkout');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                     
                     console.log('✅ Plan de renovación cargado:', planSeleccionado.name);
                 } else {
@@ -706,7 +718,8 @@ function App() {
                             </div>
                         )}
 
-                        {/* CLIENT INFORMATION FORM */}
+                        {/* CLIENT INFORMATION FORM - Hidden for renewals */}
+                        {!esRenovacion && (
                         <div className="mb-8 space-y-4">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="h-[1px] bg-neutral-800 flex-1"></div>
@@ -895,15 +908,50 @@ function App() {
                                 </label>
                             </div>
                         </div>
+                        )}
+
+                        {/* RENEWAL MODE - Simple payment method selection */}
+                        {esRenovacion && (
+                        <div className="mb-8 space-y-4">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                                <h3 className="text-xs font-bold text-yellow-500 uppercase tracking-widest">Confirmar Email</h3>
+                                <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] text-neutral-400 uppercase font-bold mb-2 ml-1">Correo Electrónico *</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+                                    <input 
+                                        type="email" 
+                                        value={email} 
+                                        onChange={(e) => setEmail(e.target.value)} 
+                                        placeholder="ejemplo@correo.com" 
+                                        required
+                                        className="w-full bg-[#181818] border border-neutral-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-yellow-500 transition-colors" 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        )}
 
                         {!paymentMethod ? (
                             <div className="space-y-3">
                                 <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wide">Selecciona método de pago</h3>
                                 <button 
                                     onClick={() => {
-                                        if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
-                                            alert('Por favor completa todos los campos obligatorios (*)');
-                                            return;
+                                        // Para renovaciones, solo validar email
+                                        if (esRenovacion) {
+                                            if (!email || !email.includes('@')) {
+                                                alert('Por favor ingresa un email válido');
+                                                return;
+                                            }
+                                        } else {
+                                            // Para nuevos clientes, validar todos los campos
+                                            if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
+                                                alert('Por favor completa todos los campos obligatorios (*)');
+                                                return;
+                                            }
                                         }
                                         if (selectedPlan.id === 'clase_pilates' && !selectedSchedule) {
                                             alert('Por favor selecciona un horario para la clase de Pilates');
@@ -917,9 +965,18 @@ function App() {
                                 </button>
                                 <button 
                                     onClick={() => {
-                                        if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
-                                            alert('Por favor completa todos los campos obligatorios (*)');
-                                            return;
+                                        // Para renovaciones, solo validar email
+                                        if (esRenovacion) {
+                                            if (!email || !email.includes('@')) {
+                                                alert('Por favor ingresa un email válido');
+                                                return;
+                                            }
+                                        } else {
+                                            // Para nuevos clientes, validar todos los campos
+                                            if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
+                                                alert('Por favor completa todos los campos obligatorios (*)');
+                                                return;
+                                            }
                                         }
                                         if (selectedPlan.id === 'clase_pilates' && !selectedSchedule) {
                                             alert('Por favor selecciona un horario para la clase de Pilates');

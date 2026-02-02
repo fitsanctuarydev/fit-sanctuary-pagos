@@ -760,6 +760,53 @@ app.post('/api/send-email', async (req, res) => {
   }
 });
 
+// --- OBTENER HORARIOS DE PILATES ---
+app.get('/api/schedules/pilates', async (req, res) => {
+  try {
+    // Intentar obtener desde el CRM primero
+    try {
+      const crmResponse = await axios.get(`${CRM_API_URL}/api/schedules`);
+      if (crmResponse.data && crmResponse.data.schedules) {
+        return res.json({ 
+          schedules: crmResponse.data.schedules 
+        });
+      }
+    } catch (crmError) {
+      console.log('⚠️ CRM API no disponible, intentando Firestore');
+    }
+
+    // Si el CRM no funciona, obtener desde Firestore
+    const schedulesRef = db.collection('schedules');
+    const snapshot = await schedulesRef.get();
+    
+    const schedules = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      schedules.push({
+        id: doc.id,
+        className: data.className || '',
+        instructor: data.instructor || '',
+        dayOfWeek: data.dayOfWeek || 0,
+        startTime: data.startTime || '',
+        endTime: data.endTime || '',
+        capacity: data.capacity || 20,
+        description: data.description || ''
+      });
+    });
+
+    res.json({ 
+      schedules: schedules,
+      source: 'firestore'
+    });
+  } catch (error) {
+    console.error('Error getting Pilates schedules:', error);
+    res.status(500).json({ 
+      error: 'Error obtaining schedules',
+      schedules: []
+    });
+  }
+});
+
 // --- SERVIR FRONTEND ---
 app.use(express.static(path.join(__dirname, 'client/dist')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'client/dist/index.html')));

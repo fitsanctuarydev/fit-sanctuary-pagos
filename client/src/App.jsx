@@ -97,6 +97,11 @@ function App() {
         aceptaTerminos: false
     });
     
+    // Estados para Clase de Pilates
+    const [availableSchedules, setAvailableSchedules] = useState([]);
+    const [selectedSchedule, setSelectedSchedule] = useState(null);
+    const [schedulesLoading, setSchedulesLoading] = useState(false);
+    
     // Estados API
     const [stripeClientSecret, setStripeClientSecret] = useState(null);
     const [mpPreferenceId, setMpPreferenceId] = useState(null);
@@ -119,6 +124,7 @@ function App() {
         setMpError(null);
         setMpLoading(false);
         setOrderId(generateOrderId());
+        setSelectedSchedule(null);
         setClientInfo({
             nombre: '',
             apellido: '',
@@ -133,8 +139,33 @@ function App() {
             telefonoEmergencia: '',
             aceptaTerminos: false
         });
+        
+        // Si es Clase de Pilates, cargar horarios disponibles
+        if (plan.id === 'clase_pilates') {
+            loadPilatesSchedules();
+        }
+        
         window.scrollTo({ top: 0, behavior: 'smooth' });
         setView('checkout');
+    };
+    
+    const loadPilatesSchedules = async () => {
+        try {
+            setSchedulesLoading(true);
+            const response = await fetch('/api/schedules/pilates');
+            if (response.ok) {
+                const data = await response.json();
+                // Filtrar solo las clases de Pilates
+                const pilatesSchedules = data.schedules?.filter(s => 
+                    s.className && (s.className.toLowerCase().includes('pilates') || s.className.toLowerCase() === 'clase de pilates')
+                ) || [];
+                setAvailableSchedules(pilatesSchedules);
+            }
+        } catch (error) {
+            console.error('Error loading Pilates schedules:', error);
+        } finally {
+            setSchedulesLoading(false);
+        }
     };
 
     // Detect returns from Mercado Pago (or other providers) and show success view
@@ -197,7 +228,17 @@ function App() {
                     telefonoEmergencia: clientInfo.telefonoEmergencia,
                     membershipType: selectedPlan.id,
                     amount: getTotal(selectedPlan.price),
-                    orderId: paymentId
+                    orderId: paymentId,
+                    // Agregar información de horario si es Clase de Pilates
+                    ...(selectedPlan.id === 'clase_pilates' && selectedSchedule && {
+                        scheduleId: selectedSchedule.id,
+                        scheduleInfo: {
+                            dayOfWeek: selectedSchedule.dayOfWeek,
+                            startTime: selectedSchedule.startTime,
+                            endTime: selectedSchedule.endTime,
+                            instructor: selectedSchedule.instructor
+                        }
+                    })
                 };
                 
                 const crmResponse = await fetch('/api/crm/create-client', {
@@ -219,7 +260,16 @@ function App() {
                         email: email, 
                         plan: selectedPlan.name, 
                         price: getTotal(selectedPlan.price),
-                        orderId: paymentId !== 'N/A' ? paymentId : Math.floor(Math.random()*10000)
+                        orderId: paymentId !== 'N/A' ? paymentId : Math.floor(Math.random()*10000),
+                        // Agregar horario en email si es disponible
+                        ...(selectedPlan.id === 'clase_pilates' && selectedSchedule && {
+                            scheduleInfo: {
+                                dayOfWeek: selectedSchedule.dayOfWeek,
+                                startTime: selectedSchedule.startTime,
+                                endTime: selectedSchedule.endTime,
+                                instructor: selectedSchedule.instructor
+                            }
+                        })
                     })
                 });
                 
@@ -545,6 +595,56 @@ function App() {
                             </div>
                         </div>
 
+                        {/* SELECTOR DE HORARIOS PARA CLASE DE PILATES */}
+                        {selectedPlan.id === 'clase_pilates' && (
+                            <div className="bg-[#181818] border border-neutral-800 rounded-xl p-5 mb-8">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                                    <h3 className="text-xs font-bold text-yellow-500 uppercase tracking-widest">Selecciona tu horario</h3>
+                                    <div className="h-[1px] bg-neutral-800 flex-1"></div>
+                                </div>
+                                
+                                {schedulesLoading ? (
+                                    <div className="text-center py-4">
+                                        <p className="text-sm text-neutral-400">Cargando horarios disponibles...</p>
+                                    </div>
+                                ) : availableSchedules.length > 0 ? (
+                                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                                        {availableSchedules.map(schedule => {
+                                            const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                                            const dayName = daysOfWeek[schedule.dayOfWeek] || 'Sin día';
+                                            return (
+                                                <button
+                                                    key={schedule.id}
+                                                    onClick={() => setSelectedSchedule(schedule)}
+                                                    className={`w-full p-3 rounded-lg border text-left transition-all ${
+                                                        selectedSchedule?.id === schedule.id
+                                                            ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
+                                                            : 'bg-neutral-900/50 border-neutral-700 text-white hover:border-neutral-600'
+                                                    }`}
+                                                >
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="font-semibold text-sm">{dayName} • {schedule.startTime} - {schedule.endTime}</p>
+                                                            <p className="text-xs text-neutral-400 mt-1">Instructor: {schedule.instructor || 'Por definir'}</p>
+                                                        </div>
+                                                        <span className="text-xs bg-neutral-800 px-2 py-1 rounded">
+                                                            {schedule.capacity ? `${schedule.capacity} lugares` : 'Ilimitado'}
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4">
+                                        <p className="text-sm text-neutral-400">No hay horarios disponibles en este momento</p>
+                                        <p className="text-xs text-neutral-500 mt-1">Intenta más tarde o contacta con nosotros</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* CLIENT INFORMATION FORM */}
                         <div className="mb-8 space-y-4">
                             <div className="flex items-center gap-3 mb-4">
@@ -744,6 +844,10 @@ function App() {
                                             alert('Por favor completa todos los campos obligatorios (*)');
                                             return;
                                         }
+                                        if (selectedPlan.id === 'clase_pilates' && !selectedSchedule) {
+                                            alert('Por favor selecciona un horario para la clase de Pilates');
+                                            return;
+                                        }
                                         initPayment('stripe', selectedPlan);
                                     }} 
                                     className="w-full bg-white text-black p-4 rounded-xl flex items-center justify-between hover:bg-neutral-200 transition-colors"
@@ -754,6 +858,10 @@ function App() {
                                     onClick={() => {
                                         if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
                                             alert('Por favor completa todos los campos obligatorios (*)');
+                                            return;
+                                        }
+                                        if (selectedPlan.id === 'clase_pilates' && !selectedSchedule) {
+                                            alert('Por favor selecciona un horario para la clase de Pilates');
                                             return;
                                         }
                                         initPayment('mp', selectedPlan);
@@ -768,6 +876,10 @@ function App() {
                                             alert('Por favor completa todos los campos obligatorios (*)');
                                             return;
                                         }
+                                        if (selectedPlan.id === 'clase_pilates' && !selectedSchedule) {
+                                            alert('Por favor selecciona un horario para la clase de Pilates');
+                                            return;
+                                        }
                                         initPayment('paypal', selectedPlan);
                                     }} 
                                     className="w-full bg-[#003087] text-white p-4 rounded-xl flex items-center justify-between hover:bg-[#00256b] transition-colors"
@@ -778,6 +890,10 @@ function App() {
                                     onClick={() => {
                                         if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
                                             alert('Por favor completa todos los campos obligatorios (*)');
+                                            return;
+                                        }
+                                        if (selectedPlan.id === 'clase_pilates' && !selectedSchedule) {
+                                            alert('Por favor selecciona un horario para la clase de Pilates');
                                             return;
                                         }
                                         setPaymentMethod('transfer');

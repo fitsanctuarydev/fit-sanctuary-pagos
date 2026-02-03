@@ -8,6 +8,7 @@ require('dotenv').config();
 const Stripe = require('stripe');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 const admin = require('firebase-admin');
+const { isContractualPackage, getPriceForMembership, getDurationDays, mapPaymentTypeToMembership } = require('./membership-pricing-config');
 
 const app = express();
 app.use(cors());
@@ -401,64 +402,77 @@ app.post('/api/crm/create-client', async (req, res) => {
       }
     }
 
-    // Calculate membership end date based on type
-    const duracionDias = {
-      'estudiante': 30,
-      'general': 30,
-      'trimestral': 90,
-      'semestral': 180,
-      'anual': 365,
-      'paquete01': 30,
-      'paquete02': 30,
-      'pilates': 30,
-      'pilates_2x': 30,
-      'hyrox': 30,
-      'grupal_3m': 90
-    };
-
-    const dias = duracionDias[mappedMembershipType] || 30;
+    // Calculate membership end date and pricing using centralized configuration
+    const dias = getDurationDays(mappedMembershipType);
     const fechaInicio = new Date();
     const fechaFin = new Date();
     fechaFin.setDate(fechaFin.getDate() + dias);
 
-    // 🔄 RENOVACIÓN: Si es renovación, desactivar SOLO la membresía específica
-    // 📦 MÚLTIPLES MEMBRESÍAS: Si no es renovación, solo desactivar membresías del MISMO TIPO
+    // 🔄 RENOVACIÓN INTELIGENTE: Si es renovación, obtener membresía anterior y aplicar lógica de precio
     const { esRenovacion, membershipId: oldMembershipId } = req.body;
+    let previousPrice = null;
+    let oldMembershipData = null;
     
     if (esRenovacion && oldMembershipId) {
-      // RENOVACIÓN: Desactivar solo la membresía específica que se está renovando
       try {
-        await db.collection('memberships').doc(oldMembershipId).update({
-          estado: 'renovada',
-          fechaRenovacion: new Date().toISOString()
-        });
-        console.log(`✓ Membresía renovada desactivada: ${oldMembershipId}`);
+        const oldMembershipRef = await db.collection('memberships').doc(oldMembershipId).get();
+        if (oldMembershipRef.exists) {
+          oldMembershipData = oldMembershipRef.data();
+          previousPrice = oldMembershipData.monto;
+          console.log(`✓ Membresía anterior encontrada: ${oldMembershipId} (Precio anterior: $${previousPrice})`);
+        }
       } catch (err) {
-        console.warn(`⚠️ No se pudo desactivar membresía ${oldMembershipId}:`, err.message);
+        console.warn(`⚠️ No se pudo obtener membresía anterior ${oldMembershipId}:`, err.message);
       }
-    } else {
-      // NUEVA MEMBRESÍA: Solo desactivar membresías del MISMO TIPO para permitir múltiples membresías
+    }
+
+    // Aplicar lógica inteligente de precios:
+    // - Para paquetes contractuales (trimestral, semestral, anual, paquete01, paquete02): conservar precio si es renovación
+    // - Para membresías regulares: usar precio actual siempre
+    const precioFinal = getPriceForMembership(mappedMembershipType, previousPrice, esRenovacion);
+    console.log(`💰 Precio aplicado: $${precioFinal} (${esRenovacion ? 'renovación' : 'nueva'}${isContractualPackage(mappedMembershipType) ? ', paquete contractual' : ''})`);
+
+    // 🗑️ ELIMINAR membresía anterior si es renovación del MISMO TIPO
+    // Esto previene duplicados y mantiene el historial limpio
+    if (esRenovacion && oldMembershipId && oldMembershipData) {
+      try {
+        // Solo eliminar si es del mismo tipo para evitar afectar otras membresías activas
+        if (oldMembershipData.tipo === mappedMembershipType) {
+          await db.collection('memberships').doc(oldMembershipId).delete();
+          console.log(`✓ Membresía anterior eliminada (renovación del mismo tipo): ${oldMembershipId}`);
+        } else {
+          // Si es tipo diferente, solo desactivar
+          await db.collection('memberships').doc(oldMembershipId).update({
+            estado: 'renovada',
+            fechaRenovacion: new Date().toISOString()
+          });
+          console.log(`✓ Membresía anterior desactivada (tipo diferente): ${oldMembershipId}`);
+        }
+      } catch (err) {
+        console.warn(`⚠️ No se pudo actualizar membresía anterior ${oldMembershipId}:`, err.message);
+      }
+    } else if (!esRenovacion) {
+      // NUEVA MEMBRESÍA: Desactivar membresías del MISMO TIPO para permitir múltiples membresías de tipos diferentes
       const oldMemberships = await db.collection('memberships')
-        .where('clienteId', '==', clientId)
+        .where('clienteId', '==', clienteId)
         .where('tipo', '==', mappedMembershipType)
         .where('estado', '==', 'activa')
         .get();
 
-      const batch = db.batch();
-      oldMemberships.forEach(doc => {
-        batch.update(doc.ref, { 
-          estado: 'reemplazada', 
-          fechaReemplazo: new Date().toISOString() 
-        });
-      });
-      await batch.commit();
-      
       if (!oldMemberships.empty) {
-        console.log(`✓ ${oldMemberships.size} membresía(s) del tipo "${mappedMembershipType}" desactivada(s)`);
+        const batch = db.batch();
+        oldMemberships.forEach(doc => {
+          batch.update(doc.ref, { 
+            estado: 'reemplazada', 
+            fechaReemplazo: new Date().toISOString() 
+          });
+        });
+        await batch.commit();
+        console.log(`✓ ${oldMemberships.size} membresía(s) anterior(es) del tipo "${mappedMembershipType}" desactivada(s)`);
       }
     }
 
-    // Create new membership
+    // Create new membership with intelligent pricing
     const membershipData = {
       clienteId: clientId,
       clienteNombre: `${nombre} ${apellido}`,
@@ -467,7 +481,10 @@ app.post('/api/crm/create-client', async (req, res) => {
       fechaFin: fechaFin.toISOString(),
       estado: 'activa',
       pagoId: orderId || 'N/A',
-      monto: amount || 0,
+      monto: precioFinal,  // Use intelligent price, not request amount
+      montoOriginal: amount || precioFinal,  // Keep original payment amount for audit
+      esRenovacion: esRenovacion || false,  // Track if this is a renewal
+      membershipAnteriorId: oldMembershipId || null,  // Link to previous membership
       fechaCreacion: new Date().toISOString()
     };
 

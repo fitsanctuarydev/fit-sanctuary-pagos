@@ -121,7 +121,7 @@ export default function RenewalPage() {
         setLoading(true);
         try {
             const total = getTotal(plan.price);
-            const res = await fetch('/api/stripe/create-payment-intent', {
+            const res = await fetch('/api/stripe/create-intent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 

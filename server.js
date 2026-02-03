@@ -1167,6 +1167,60 @@ app.post('/api/email-templates', async (req, res) => {
   }
 });
 
+// --- ESTADÍSTICAS DE CONTACTOS (FASE 3) ---
+app.get('/api/contact-stats', async (req, res) => {
+  try {
+    // Obtener estadísticas de membresías vencidas
+    const expiredMemberships = await db.collection('memberships')
+      .where('estado', '==', 'vencida')
+      .get();
+
+    // Obtener clientes sin membresía activa
+    const allClients = await db.collection('clients').get();
+    const clientsWithoutMembership = { count: 0 };
+    
+    for (const clientDoc of allClients.docs) {
+      const activeMemberships = await db.collection('memberships')
+        .where('clienteId', '==', clientDoc.id)
+        .where('estado', '==', 'activa')
+        .get();
+      
+      if (activeMemberships.empty) {
+        clientsWithoutMembership.count++;
+      }
+    }
+
+    // Obtener total de day passes
+    const dayPasses = await db.collection('dayPasses').get();
+
+    // Obtener pagos completados este mes
+    const thisMonth = new Date();
+    thisMonth.setDate(1);
+    const nextMonth = new Date(thisMonth);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+    const paymentsThisMonth = await db.collection('payments')
+      .where('fecha', '>=', thisMonth.toISOString())
+      .where('fecha', '<', nextMonth.toISOString())
+      .get();
+
+    res.json({
+      stats: {
+        expiredMemberships: expiredMemberships.size,
+        clientsWithoutMembership: clientsWithoutMembership.count,
+        dayPasses: dayPasses.size,
+        paymentsThisMonth: paymentsThisMonth.size,
+        revenueThisMonth: paymentsThisMonth.docs.reduce((sum, doc) => sum + (doc.data().monto || 0), 0),
+        totalClients: allClients.size
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error obteniendo estadísticas:', error);
+    res.status(500).json({ error: 'Error al obtener estadísticas: ' + error.message });
+  }
+});
+
 // --- SERVIR FRONTEND ---
 app.use(express.static(path.join(__dirname, 'client/dist')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'client/dist/index.html')));

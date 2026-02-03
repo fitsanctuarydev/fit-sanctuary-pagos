@@ -232,3 +232,4 @@ Tu sistema de pagos es ahora **profesional y robusto**. Todo está en el portal 
 3. Testear con tarjetas de prueba
 4. ¡Y lanzar a producción! 🚀
 
+##2026 BBY

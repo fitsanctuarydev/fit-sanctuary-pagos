@@ -421,20 +421,41 @@ app.post('/api/crm/create-client', async (req, res) => {
     const fechaFin = new Date();
     fechaFin.setDate(fechaFin.getDate() + dias);
 
-    // Desactivar membresías anteriores del mismo cliente
-    const oldMemberships = await db.collection('memberships')
-      .where('clienteId', '==', clientId)
-      .where('estado', '==', 'activa')
-      .get();
-
-    const batch = db.batch();
-    oldMemberships.forEach(doc => {
-      batch.update(doc.ref, { estado: 'reemplazada', fechaReemplazo: new Date().toISOString() });
-    });
-    await batch.commit();
+    // 🔄 RENOVACIÓN: Si es renovación, desactivar SOLO la membresía específica
+    // 📦 MÚLTIPLES MEMBRESÍAS: Si no es renovación, solo desactivar membresías del MISMO TIPO
+    const { esRenovacion, membershipId: oldMembershipId } = req.body;
     
-    if (!oldMemberships.empty) {
-      console.log(`✓ ${oldMemberships.size} membresía(s) anterior(es) desactivada(s)`);
+    if (esRenovacion && oldMembershipId) {
+      // RENOVACIÓN: Desactivar solo la membresía específica que se está renovando
+      try {
+        await db.collection('memberships').doc(oldMembershipId).update({
+          estado: 'renovada',
+          fechaRenovacion: new Date().toISOString()
+        });
+        console.log(`✓ Membresía renovada desactivada: ${oldMembershipId}`);
+      } catch (err) {
+        console.warn(`⚠️ No se pudo desactivar membresía ${oldMembershipId}:`, err.message);
+      }
+    } else {
+      // NUEVA MEMBRESÍA: Solo desactivar membresías del MISMO TIPO para permitir múltiples membresías
+      const oldMemberships = await db.collection('memberships')
+        .where('clienteId', '==', clientId)
+        .where('tipo', '==', mappedMembershipType)
+        .where('estado', '==', 'activa')
+        .get();
+
+      const batch = db.batch();
+      oldMemberships.forEach(doc => {
+        batch.update(doc.ref, { 
+          estado: 'reemplazada', 
+          fechaReemplazo: new Date().toISOString() 
+        });
+      });
+      await batch.commit();
+      
+      if (!oldMemberships.empty) {
+        console.log(`✓ ${oldMemberships.size} membresía(s) del tipo "${mappedMembershipType}" desactivada(s)`);
+      }
     }
 
     // Create new membership
@@ -804,6 +825,104 @@ app.get('/api/schedules/pilates', async (req, res) => {
       error: 'Error obtaining schedules',
       schedules: []
     });
+  }
+});
+
+// --- RENOVAR MEMBRESÍA DESDE EL SISTEMA (CRM) ---
+app.post('/api/crm/renew-membership', async (req, res) => {
+  try {
+    const { clientId, oldMembershipId, membershipType, esRenovacion } = req.body;
+
+    if (!clientId || !oldMembershipId || !membershipType) {
+      return res.status(400).json({ error: 'Faltan datos requeridos (clientId, oldMembershipId, membershipType)' });
+    }
+
+    // Obtener información del cliente y membresía anterior
+    const clientDoc = await db.collection('clients').doc(clientId).get();
+    if (!clientDoc.exists) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+
+    const oldMembershipDoc = await db.collection('memberships').doc(oldMembershipId).get();
+    if (!oldMembershipDoc.exists) {
+      return res.status(404).json({ error: 'Membresía anterior no encontrada' });
+    }
+
+    const client = clientDoc.data();
+    const oldMembership = oldMembershipDoc.data();
+
+    // Marcar membresía anterior como renovada
+    await db.collection('memberships').doc(oldMembershipId).update({
+      estado: 'renovada',
+      fechaRenovacion: new Date().toISOString()
+    });
+
+    console.log(`✓ Membresía anterior marcada como renovada: ${oldMembershipId}`);
+
+    // Calcular fecha de fin (30 días por defecto, excepto membresías especiales)
+    const duracionDias = {
+      'estudiante': 30,
+      'general': 30,
+      'trimestral': 90,
+      'semestral': 180,
+      'anual': 365,
+      'paquete01': 30,
+      'paquete02': 30,
+      'pilates': 30,
+      'pilates_2x': 30,
+      'hyrox': 30,
+      'grupal_3m': 90
+    };
+
+    const dias = duracionDias[membershipType] || 30;
+    const fechaInicio = new Date();
+    const fechaFin = new Date();
+    fechaFin.setDate(fechaFin.getDate() + dias);
+
+    // Crear nueva membresía
+    const newMembershipData = {
+      clienteId: clientId,
+      clienteNombre: client.nombre || `${client.nombre} ${client.apellido}`,
+      tipo: membershipType,
+      fechaInicio: fechaInicio.toISOString(),
+      fechaFin: fechaFin.toISOString(),
+      estado: 'activa',
+      pagoId: 'renovacion_manual',
+      monto: oldMembership.monto || oldMembership.precio || 579,
+      fechaCreacion: new Date().toISOString(),
+      renovadaDesde: oldMembershipId
+    };
+
+    const newMembershipRef = await db.collection('memberships').add(newMembershipData);
+    console.log(`✓ Nueva membresía creada por renovación: ${newMembershipRef.id}`);
+
+    // Crear registro de pago para auditoría
+    const paymentData = {
+      clienteId: clientId,
+      clienteName: client.nombre || `${client.nombre} ${client.apellido}`,
+      monto: oldMembership.monto || oldMembership.precio || 579,
+      metodo: 'renovacion_manual',
+      estado: 'completado',
+      orderId: `renovacion_${oldMembershipId}`,
+      fecha: new Date().toISOString(),
+      tipo: membershipType,
+      notas: 'Renovación realizada manualmente desde el CRM'
+    };
+
+    const paymentRef = await db.collection('payments').add(paymentData);
+    console.log(`✓ Pago registrado para renovación: ${paymentRef.id}`);
+
+    res.json({
+      ok: true,
+      clientId,
+      oldMembershipId,
+      newMembershipId: newMembershipRef.id,
+      paymentId: paymentRef.id,
+      message: '✅ Membresía renovada exitosamente desde el sistema'
+    });
+  } catch (error) {
+    console.error('Error renewing membership:', error);
+    res.status(500).json({ error: 'Error al renovar membresía: ' + error.message });
   }
 });
 

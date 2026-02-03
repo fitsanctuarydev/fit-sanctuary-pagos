@@ -7,6 +7,7 @@ import { ShieldCheck, Lock, ArrowLeft, CheckCircle, Clock, MapPin, ChevronRight,
 import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import RefundPolicy from './pages/RefundPolicy';
+import RenewalPage from './RenewalPage';
 
 const cleanKey = (key) => (key || "").replace(/[\n\r\s]/g, "").trim();
 const STRIPE_KEY = cleanKey(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
@@ -72,6 +73,16 @@ const StripeForm = ({ onSuccess }) => {
 };
 
 function App() {
+    // 🔄 Detectar si es renovación
+    const params = new URLSearchParams(window.location.search);
+    const isRenewalMode = params.get('renovacion') === 'true';
+    
+    // Si es renovación, mostrar página dedicada
+    if (isRenewalMode) {
+        return <RenewalPage />;
+    }
+    
+    // Continuar con flujo normal para nuevos clientes
     const [view, setView] = useState('linkinbio'); // Cambiamos vista inicial
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState(null);

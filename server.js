@@ -845,6 +845,65 @@ app.get('/api/schedules/pilates', async (req, res) => {
   }
 });
 
+// --- OBTENER MEMBRESÍA POR ID (para renovaciones) ---
+app.get('/api/memberships/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id || id === 'null' || id === 'undefined') {
+      return res.status(400).json({ error: 'ID de membresía inválido' });
+    }
+
+    const membershipRef = await db.collection('memberships').doc(id).get();
+    
+    if (!membershipRef.exists) {
+      return res.status(404).json({ error: 'Membresía no encontrada' });
+    }
+
+    const membershipData = membershipRef.data();
+    res.json({
+      id: membershipRef.id,
+      ...membershipData
+    });
+  } catch (error) {
+    console.error('Error obteniendo membresía:', error);
+    res.status(500).json({ error: 'Error al obtener membresía: ' + error.message });
+  }
+});
+
+// --- OBTENER MEMBRESÍAS ACTIVAS DE UN CLIENTE ---
+app.get('/api/clients/:clientId/active-memberships', async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    if (!clientId || clientId === 'null' || clientId === 'undefined') {
+      return res.status(400).json({ error: 'ID de cliente inválido' });
+    }
+
+    const membershipsRef = await db.collection('memberships')
+      .where('clienteId', '==', clientId)
+      .where('estado', '==', 'activa')
+      .get();
+
+    const memberships = [];
+    membershipsRef.forEach(doc => {
+      memberships.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    res.json({
+      clientId,
+      activeMemberships: memberships,
+      count: memberships.length
+    });
+  } catch (error) {
+    console.error('Error obteniendo membresías activas:', error);
+    res.status(500).json({ error: 'Error al obtener membresías: ' + error.message });
+  }
+});
+
 // --- RENOVAR MEMBRESÍA DESDE EL SISTEMA (CRM) ---
 app.post('/api/crm/renew-membership', async (req, res) => {
   try {

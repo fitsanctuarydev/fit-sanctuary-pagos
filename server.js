@@ -1002,6 +1002,171 @@ app.post('/api/crm/renew-membership', async (req, res) => {
   }
 });
 
+// --- DAY PASS ENDPOINTS (FASE 3) ---
+
+// GET all day passes
+app.get('/api/day-passes', async (req, res) => {
+  try {
+    const snapshot = await db.collection('dayPasses')
+      .orderBy('fecha', 'desc')
+      .limit(100)
+      .get();
+    
+    const dayPasses = [];
+    snapshot.forEach(doc => {
+      dayPasses.push({ id: doc.id, ...doc.data() });
+    });
+    
+    console.log(`✓ Obtenidos ${dayPasses.length} day passes`);
+    res.json({ dayPasses });
+  } catch (error) {
+    console.error('❌ Error obteniendo day passes:', error);
+    res.status(500).json({ error: 'Error al obtener day passes: ' + error.message });
+  }
+});
+
+// POST create new day pass
+app.post('/api/day-passes', async (req, res) => {
+  try {
+    const { nombre, email, telefono, fecha, notas } = req.body;
+    
+    // Validación básica
+    if (!nombre || !fecha) {
+      return res.status(400).json({ error: 'Nombre y fecha son requeridos' });
+    }
+    
+    const dayPassData = {
+      nombre,
+      email: email || '',
+      telefono: telefono || '',
+      fecha: fecha,
+      notas: notas || '',
+      createdAt: new Date().toISOString(),
+      visitante: true
+    };
+    
+    const docRef = await db.collection('dayPasses').add(dayPassData);
+    console.log(`✓ Day pass creado: ${docRef.id}`);
+    
+    res.json({ 
+      ok: true, 
+      id: docRef.id, 
+      message: 'Day pass registrado exitosamente' 
+    });
+  } catch (error) {
+    console.error('❌ Error creando day pass:', error);
+    res.status(500).json({ error: 'Error al crear day pass: ' + error.message });
+  }
+});
+
+// DELETE day pass
+app.delete('/api/day-passes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await db.collection('dayPasses').doc(id).delete();
+    console.log(`✓ Day pass eliminado: ${id}`);
+    
+    res.json({ 
+      ok: true, 
+      message: 'Day pass eliminado exitosamente' 
+    });
+  } catch (error) {
+    console.error('❌ Error eliminando day pass:', error);
+    res.status(500).json({ error: 'Error al eliminar day pass: ' + error.message });
+  }
+});
+
+// --- EMAIL TEMPLATES ENDPOINTS (FASE 3) ---
+
+// GET email templates
+app.get('/api/email-templates', async (req, res) => {
+  try {
+    const doc = await db.collection('emailTemplates').doc('dayPass').get();
+    
+    if (!doc.exists) {
+      // Retornar templates por defecto si no existen
+      const defaultTemplates = {
+        email: `¡Hola [NOMBRE]!
+
+Gracias por visitarnos el [FECHA].
+
+Te dejamos nuestros precios vigentes por si quieres inscribirte:
+
+📋 PLANES DISPONIBLES:
+- Mensualidad General: $579
+- Mensualidad Estudiante: $519
+- Paquete 3 Meses: $1,449
+- Paquete 6 Meses: $2,799
+- Paquete 12 Meses: $5,299
+- Pilates 3x/semana: $1,149
+- Pilates 2x/semana: $840
+
+Si ya te inscribiste, ¡haz caso omiso!
+
+Cualquier duda, no dudes en contactarnos.
+
+¡Esperamos verte pronto en Fit Sanctuary! 💪`,
+        whatsapp: `¡Hola [NOMBRE]! 👋
+
+Gracias por visitarnos el [FECHA] 💪
+
+Te dejamos nuestros precios vigentes:
+
+📋 PLANES:
+- General: $579
+- Estudiante: $519
+- 3 Meses: $1,449
+- 6 Meses: $2,799
+- 12 Meses: $5,299
+- Pilates 3x: $1,149
+- Pilates 2x: $840
+
+Si ya te inscribiste, ¡gracias! 😊
+
+Cualquier duda, estamos aquí para ayudarte.
+
+¡Esperamos verte en Fit Sanctuary! 🏋️`
+      };
+      
+      return res.json({ templates: defaultTemplates });
+    }
+    
+    res.json({ templates: doc.data() });
+  } catch (error) {
+    console.error('❌ Error obteniendo templates:', error);
+    res.status(500).json({ error: 'Error al obtener templates: ' + error.message });
+  }
+});
+
+// POST update email templates
+app.post('/api/email-templates', async (req, res) => {
+  try {
+    const { email, whatsapp } = req.body;
+    
+    if (!email || !whatsapp) {
+      return res.status(400).json({ error: 'Email y WhatsApp templates son requeridos' });
+    }
+    
+    const templatesData = {
+      email,
+      whatsapp,
+      updatedAt: new Date().toISOString()
+    };
+    
+    await db.collection('emailTemplates').doc('dayPass').set(templatesData, { merge: true });
+    console.log('✓ Templates actualizados');
+    
+    res.json({ 
+      ok: true, 
+      message: 'Templates actualizados exitosamente' 
+    });
+  } catch (error) {
+    console.error('❌ Error actualizando templates:', error);
+    res.status(500).json({ error: 'Error al actualizar templates: ' + error.message });
+  }
+});
+
 // --- SERVIR FRONTEND ---
 app.use(express.static(path.join(__dirname, 'client/dist')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'client/dist/index.html')));

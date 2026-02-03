@@ -13,20 +13,20 @@ if (MP_KEY && !MP_KEY.includes('TU_CLAVE')) {
     initMercadoPago(MP_KEY, { locale: 'es-MX' }); 
 }
 
-// Catálogo de planes
+// Catálogo de planes con soporte para paquetes contractuales
 const PLANS = {
-    'estudiante': { name: 'Mensualidad Estudiantes', price: 519 },
-    'general': { name: 'Mensualidad General', price: 579 },
-    'trimestral': { name: 'Paquete 3 Meses', price: 1449 },
-    'semestral': { name: 'Paquete 6 Meses', price: 2799 },
-    'anual': { name: 'Paquete 12 Meses', price: 5299 },
-    'paquete01': { name: 'Paquete 01 (Todo Incluido)', price: 1549 },
-    'paquete02': { name: 'Paquete 02 (Todo Incluido)', price: 1699 },
-    'pilates': { name: 'Pack Pilates', price: 1149 },
-    'pilates_2x': { name: 'Pack Pilates 2x', price: 840 },
-    'hyrox': { name: 'Pack Hyrox', price: 579 },
-    'clase_pilates': { name: 'Clase de Pilates', price: 160 },
-    'grupal_3m': { name: 'Plan Grupal 3 Meses', price: 1249 }
+    'estudiante': { name: 'Mensualidad Estudiantes', price: 519, contractual: false },
+    'general': { name: 'Mensualidad General', price: 579, contractual: false },
+    'trimestral': { name: 'Paquete 3 Meses', price: 1449, contractual: true },
+    'semestral': { name: 'Paquete 6 Meses', price: 2799, contractual: true },
+    'anual': { name: 'Paquete 12 Meses', price: 5299, contractual: true },
+    'paquete01': { name: 'Paquete 01 (Todo Incluido)', price: 1549, contractual: true },
+    'paquete02': { name: 'Paquete 02 (Todo Incluido)', price: 1699, contractual: true },
+    'pilates': { name: 'Pack Pilates', price: 1149, contractual: false },
+    'pilates_2x': { name: 'Pack Pilates 2x', price: 840, contractual: false },
+    'hyrox': { name: 'Pack Hyrox', price: 579, contractual: false },
+    'clase_pilates': { name: 'Clase de Pilates', price: 160, contractual: false },
+    'grupal_3m': { name: 'Plan Grupal 3 Meses', price: 1249, contractual: false }
 };
 
 const StripeForm = ({ onSuccess }) => {
@@ -77,6 +77,41 @@ export default function RenewalPage() {
     const [mpError, setMpError] = useState(null);
     const [success, setSuccess] = useState(false);
     const [orderId, setOrderId] = useState(null);
+    const [previousMembership, setPreviousMembership] = useState(null);
+    const [priceToApply, setPriceToApply] = useState(null);
+
+    // Obtener membresía anterior para decidir si conservar precio
+    const fetchPreviousMembership = async (membershipId) => {
+        if (!membershipId || membershipId === 'null') return null;
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/memberships/${membershipId}`);
+            if (response.ok) {
+                const membership = await response.json();
+                setPreviousMembership(membership);
+                console.log('✓ Membresía anterior obtenida:', membership);
+                return membership;
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudo obtener membresía anterior:', error);
+        }
+        return null;
+    };
+
+    // Calcular precio inteligente: conservar si es paquete contractual en renovación
+    const calculatePrice = (planId, previousMembership) => {
+        const planInfo = PLANS[planId];
+        if (!planInfo) return null;
+
+        // Si es paquete contractual y hay membresía anterior del mismo tipo con precio anterior, conservar
+        if (planInfo.contractual && previousMembership && previousMembership.tipo === planId && previousMembership.monto) {
+            console.log(`💰 Conservando precio contractual: $${previousMembership.monto}`);
+            return previousMembership.monto;
+        }
+
+        // Si no, usar precio actual
+        console.log(`💰 Aplicando precio actual: $${planInfo.price}`);
+        return planInfo.price;
+    };
 
     useEffect(() => {
         // Extraer parámetros de la URL
@@ -101,6 +136,17 @@ export default function RenewalPage() {
                 });
                 setOrderId(`RENEW-${Date.now()}`);
                 console.log('✅ Plan de renovación identificado:', planInfo.name);
+
+                // Obtener membresía anterior para lógica de precios
+                if (membershipId && membershipId !== 'null') {
+                    fetchPreviousMembership(membershipId).then((prev) => {
+                        const price = calculatePrice(planId, prev);
+                        setPriceToApply(price);
+                    });
+                } else {
+                    // Si no hay membresía anterior, usar precio actual
+                    setPriceToApply(planInfo.price);
+                }
             } else {
                 console.error('❌ Plan no encontrado:', planId);
             }
@@ -120,7 +166,8 @@ export default function RenewalPage() {
 
         setLoading(true);
         try {
-            const total = getTotal(plan.price);
+            const price = priceToApply || plan.price;  // Use intelligent price
+            const total = getTotal(price);
             const res = await fetch('/api/stripe/create-intent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -133,7 +180,9 @@ export default function RenewalPage() {
                     productName: plan.name,
                     isRenewal: true,
                     clienteId: renewalData.clienteId,
-                    membershipId: renewalData.membershipId
+                    membershipId: renewalData.membershipId,
+                    esRenovacion: true,
+                    montoOriginal: price  // Pass the intelligent price
                 })
             });
             const data = await res.json();
@@ -157,7 +206,8 @@ export default function RenewalPage() {
         setLoading(true);
         setMpError(null);
         try {
-            const total = getTotal(plan.price);
+            const price = priceToApply || plan.price;  // Use intelligent price
+            const total = getTotal(price);
             const res = await fetch('/api/mp/create-preference', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -166,11 +216,14 @@ export default function RenewalPage() {
                     price: total,
                     orderId: orderId,
                     userEmail: email,
+                    montoOriginal: price,  // Pass the intelligent price
+                    esRenovacion: true,
                     metadata: {
                         isRenewal: true,
                         clienteId: renewalData.clienteId,
                         membershipId: renewalData.membershipId,
-                        planId: plan.id
+                        planId: plan.id,
+                        montoOriginal: price
                     }
                 })
             });
@@ -255,7 +308,7 @@ export default function RenewalPage() {
                         <p className="text-sm text-gray-500 mb-1">Plan</p>
                         <p className="text-white font-semibold">{plan.name}</p>
                         <p className="text-sm text-gray-500 mt-3 mb-1">Total Pagado</p>
-                        <p className="text-2xl text-yellow-400 font-bold">${getTotal(plan.price)}</p>
+                        <p className="text-2xl text-yellow-400 font-bold">${getTotal(priceToApply || plan.price)}</p>
                     </div>
                 </div>
             </div>
@@ -283,8 +336,8 @@ export default function RenewalPage() {
                         </div>
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Total a Pagar</p>
-                            <p className="text-4xl font-bold text-yellow-400">${getTotal(plan.price)}</p>
-                            <p className="text-xs text-gray-500">Incluye comisión de ${getFee(plan.price)}</p>
+                            <p className="text-4xl font-bold text-yellow-400">${getTotal(priceToApply || plan.price)}</p>
+                            <p className="text-xs text-gray-500">Incluye comisión de ${getFee(priceToApply || plan.price)}</p>
                         </div>
                     </div>
                 </div>

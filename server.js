@@ -199,11 +199,14 @@ app.post('/api/stripe/create-intent', async (req, res) => {
 // 2B. EVO PAYMENTS - Alternativa a Stripe
 app.post('/api/evo/create-session', async (req, res) => {
   try {
+    console.log('📥 EVO create-session request body:', req.body);
+    
     const { amount, email, nombre, apellido, productId, productName } = req.body;
 
     // Validación
     if (!amount || typeof amount !== 'number' || amount <= 0) {
-      return res.status(400).json({ error: "Monto inválido" });
+      console.log('❌ Validación fallida - amount:', amount, 'tipo:', typeof amount);
+      return res.status(400).json({ error: "Missing parameters" });
     }
 
     console.log(`🔄 EVO Payments: Creando sesión para $${amount} MXN`);

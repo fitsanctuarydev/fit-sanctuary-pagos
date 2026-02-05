@@ -21,6 +21,16 @@ class EVOPaymentService {
     this.webhookSecret = process.env.EVO_WEBHOOK_SECRET;
     this.currency = process.env.EVO_CURRENCY || 'MXN';
 
+    // Validar y mostrar configuración (sin password completo)
+    console.log('🔧 EVO Payments Config:', {
+      baseUrl: this.baseUrl,
+      merchantId: this.merchantId,
+      username: this.username,
+      hasPassword: !!this.password,
+      apiVersion: this.apiVersion,
+      currency: this.currency
+    });
+
     // Validar que tenemos las credenciales necesarias
     if (!this.merchantId || !this.username || !this.password) {
       console.warn('⚠️ EVO Payments: Credenciales incompletas. Verifica variables de entorno.');
@@ -91,6 +101,19 @@ class EVOPaymentService {
           });
         }
 
+        // Log completo para debugging
+        console.log('📋 EVO Response Status:', response?.statusCode);
+        console.log('📋 EVO Response Body:', JSON.stringify(body, null, 2));
+
+        // Verificar si hay error en la respuesta
+        if (body && body.error) {
+          return reject({
+            code: body.error.cause || 'EVO_API_ERROR',
+            message: body.error.explanation || 'Error en API de EVO',
+            details: body.error
+          });
+        }
+
         if (body && body.session && body.session.id) {
           return resolve({
             orderId: sessionOrderId,
@@ -104,7 +127,8 @@ class EVOPaymentService {
         reject({
           code: 'EVO_SESSION_INVALID',
           message: 'EVO no devolvió sessionId válido',
-          response: body
+          response: body,
+          statusCode: response?.statusCode
         });
       });
     });

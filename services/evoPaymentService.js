@@ -57,8 +57,15 @@ class EVOPaymentService {
    * @returns {object} Opciones con autenticación configurada
    */
   setAuthentication(options) {
+    // Probar formato: merchant.{MERCHANT_ID}
+    const authUser = this.username.includes('@') 
+      ? `merchant.${this.merchantId}` 
+      : this.username;
+    
+    console.log('🔐 Auth user format:', authUser);
+    
     options.auth = {
-      user: this.username,
+      user: authUser,
       pass: this.password
     };
     return options;

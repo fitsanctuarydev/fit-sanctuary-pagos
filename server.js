@@ -212,7 +212,8 @@ app.post('/api/evo/create-session', async (req, res) => {
     console.log(`🔄 EVO Payments: Creando sesión para $${amount} MXN`);
 
     // Crear sesión de pago en EVO
-    const sessionData = await evoPaymentService.createSession(amount);
+    const description = productName || 'Membresía Fit Sanctuary';
+    const sessionData = await evoPaymentService.createSession(amount, req.body.orderId, description);
 
     console.log(`✓ Sesión EVO creada: ${sessionData.sessionId}`);
 

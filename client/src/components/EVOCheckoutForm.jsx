@@ -22,8 +22,40 @@ export default function EVOCheckoutForm({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [sessionId, setSessionId] = useState(null);
-    const [hostedCheckoutUrl, setHostedCheckoutUrl] = useState(null);
     const [step, setStep] = useState('init'); // init, session-created, processing, success, error
+
+    /**
+     * Inicializar Hosted Checkout embebido
+     */
+    const initializeHostedCheckout = (sessionData) => {
+        // Cargar el script de EVO Checkout
+        const script = document.createElement('script');
+        script.src = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout.js`;
+        script.onload = () => {
+            // Configurar el checkout
+            window.Checkout.configure({
+                session: {
+                    id: sessionData.sessionId
+                },
+                interaction: {
+                    merchant: {
+                        name: 'Fit Sanctuary',
+                        address: {
+                            line1: 'Gym Address'
+                        }
+                    }
+                }
+            });
+
+            // Mostrar el lightbox
+            window.Checkout.showLightbox();
+        };
+        script.onerror = () => {
+            setError('Error al cargar el módulo de pago');
+            setStep('error');
+        };
+        document.body.appendChild(script);
+    };
 
     /**
      * Paso 1: Crear sesión de pago en EVO
@@ -57,17 +89,16 @@ export default function EVOCheckoutForm({
                 throw new Error(data.error || 'Error creando sesión de pago');
             }
 
-            if (!data.sessionId || !data.hostedCheckoutUrl) {
+            if (!data.sessionId) {
                 throw new Error('Respuesta inválida del servidor');
             }
 
             console.log('✅ Sesión EVO creada:', data.sessionId);
             setSessionId(data.sessionId);
-            setHostedCheckoutUrl(data.hostedCheckoutUrl);
             setStep('session-created');
 
-            // Redirigir al Hosted Checkout de EVO
-            window.location.href = data.hostedCheckoutUrl;
+            // Inicializar Hosted Checkout con JavaScript
+            initializeHostedCheckout(data);
 
         } catch (err) {
             console.error('❌ Error creando sesión:', err);

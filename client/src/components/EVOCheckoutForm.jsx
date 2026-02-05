@@ -22,17 +22,40 @@ export default function EVOCheckoutForm({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [sessionId, setSessionId] = useState(null);
-    const [paymentUrl, setPaymentUrl] = useState(null);
     const [step, setStep] = useState('init'); // init, session-created, processing, success, error
 
     /**
-     * Inicializar Hosted Checkout embebido
+     * Inicializar Hosted Checkout con lightbox
+     * (EVO no permite iframe embebido por seguridad)
      */
     const initializeHostedCheckout = (sessionData) => {
-        // Construir URL del payment page para embeber en iframe
-        const paymentPageUrl = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout?session.id=${sessionData.sessionId}`;
-        setPaymentUrl(paymentPageUrl);
-        setStep('session-created');
+        const script = document.createElement('script');
+        script.src = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout.js`;
+        script.onload = () => {
+            window.Checkout.configure({
+                session: {
+                    id: sessionData.sessionId
+                },
+                interaction: {
+                    merchant: {
+                        name: 'Fit Sanctuary',
+                        address: {
+                            line1: 'Gym Address'
+                        }
+                    },
+                    displayControl: {
+                        billingAddress: 'HIDE',
+                        customerEmail: 'HIDE'
+                    }
+                }
+            });
+            window.Checkout.showLightbox();
+        };
+        script.onerror = () => {
+            setError('Error al cargar el módulo de pago');
+            setStep('error');
+        };
+        document.body.appendChild(script);
     };
 
     /**
@@ -172,23 +195,17 @@ export default function EVOCheckoutForm({
                 </button>
             )}
 
-            {/* Estado: Sesión creada - mostrar iframe embebido */}
-            {step === 'session-created' && paymentUrl && (
+            {/* Estado: Sesión creada - lightbox abierto */}
+            {step === 'session-created' && (
                 <div className="space-y-4">
-                    <div className="relative w-full overflow-hidden rounded-lg border border-neutral-700" style={{ height: '600px' }}>
-                        <iframe
-                            src={paymentUrl}
-                            className="w-full h-full"
-                            style={{ 
-                                border: 'none',
-                                display: 'block'
-                            }}
-                            title="EVO Payment Checkout"
-                            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
-                        />
+                    <div className="flex items-center gap-2 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
+                        <Loader className="w-4 h-4 animate-spin text-blue-400" />
+                        <span className="text-sm text-blue-300">
+                            Ventana de pago abierta. Completa tu pago en el formulario emergente.
+                        </span>
                     </div>
                     <p className="text-xs text-gray-500 text-center">
-                        Formulario de pago seguro proporcionado por EVO Payments
+                        Si no ves la ventana, verifica que tu navegador no esté bloqueando popups
                     </p>
                 </div>
             )}

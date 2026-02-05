@@ -9,6 +9,7 @@ const Stripe = require('stripe');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 const admin = require('firebase-admin');
 const { isContractualPackage, getPriceForMembership, getDurationDays, mapPaymentTypeToMembership } = require('./membership-pricing-config');
+const evoPaymentService = require('./services/evoPaymentService');
 
 const app = express();
 app.use(cors());
@@ -192,6 +193,114 @@ app.post('/api/stripe/create-intent', async (req, res) => {
   } catch (error) {
     console.error('❌ Error Stripe:', error.message);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// 2B. EVO PAYMENTS - Alternativa a Stripe
+app.post('/api/evo/create-session', async (req, res) => {
+  try {
+    const { amount, email, nombre, apellido, productId, productName } = req.body;
+
+    // Validación
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ error: "Monto inválido" });
+    }
+
+    console.log(`🔄 EVO Payments: Creando sesión para $${amount} MXN`);
+
+    // Crear sesión de pago en EVO
+    const sessionData = await evoPaymentService.createSession(amount);
+
+    console.log(`✓ Sesión EVO creada: ${sessionData.sessionId}`);
+
+    return res.json({
+      sessionId: sessionData.sessionId,
+      orderId: sessionData.orderId,
+      baseUrl: evoPaymentService.baseUrl,
+      apiVersion: evoPaymentService.apiVersion,
+      merchantId: evoPaymentService.merchantId,
+      currency: evoPaymentService.currency,
+      metadata: {
+        productId: productId || 'unknown',
+        productName: productName || 'Membresía',
+        email,
+        nombre,
+        apellido
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error EVO create-session:', error.message);
+    res.status(500).json({ 
+      error: error.code || 'EVO_SESSION_ERROR', 
+      message: error.message 
+    });
+  }
+});
+
+app.post('/api/evo/process-payment', async (req, res) => {
+  try {
+    const { orderId, amount, sessionId, productId, productName, email, nombre, apellido } = req.body;
+
+    // Validación
+    if (!orderId || !amount || !sessionId) {
+      return res.status(400).json({ error: "Parámetros requeridos: orderId, amount, sessionId" });
+    }
+
+    console.log(`💳 EVO Payments: Procesando pago de $${amount} MXN para orden ${orderId}`);
+
+    // Procesar pago
+    const paymentResult = await evoPaymentService.processPay({
+      orderId,
+      amount,
+      sessionId,
+      description: productName || 'Membresía Fit Sanctuary'
+    });
+
+    if (paymentResult.result === 'SUCCESS') {
+      // Guardar registro de pago en Firestore
+      const paymentRef = db.collection('payments').doc();
+      await paymentRef.set({
+        paymentGateway: 'evo',
+        evoOrderId: orderId,
+        evoTransactionId: paymentResult.transactionId,
+        evoSessionId: sessionId,
+        amount,
+        currency: 'MXN',
+        status: 'completed',
+        productId: productId || 'unknown',
+        productName: productName || 'Membresía',
+        email,
+        nombre,
+        apellido,
+        timestamp: new Date(),
+        metadata: {
+          source: 'fit_sanctuary_pagos'
+        }
+      });
+
+      console.log(`✓ Pago EVO completado: ${orderId}`);
+
+      return res.json({
+        success: true,
+        orderId,
+        transactionId: paymentResult.transactionId,
+        amount,
+        status: paymentResult.status
+      });
+    } else {
+      console.warn(`⚠️ Pago EVO rechazado para ${orderId}: ${paymentResult.result}`);
+      return res.status(400).json({
+        success: false,
+        error: paymentResult.result,
+        orderId
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error EVO process-payment:', error.message);
+    res.status(500).json({ 
+      error: error.code || 'EVO_PAYMENT_ERROR', 
+      message: error.message 
+    });
   }
 });
 

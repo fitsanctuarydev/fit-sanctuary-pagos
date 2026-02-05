@@ -32,7 +32,7 @@ export default function EVOCheckoutForm({
         const script = document.createElement('script');
         script.src = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout.js`;
         script.onload = () => {
-            // Configurar el checkout
+            // Configurar el checkout embebido (sin lightbox)
             window.Checkout.configure({
                 session: {
                     id: sessionData.sessionId
@@ -43,12 +43,16 @@ export default function EVOCheckoutForm({
                         address: {
                             line1: 'Gym Address'
                         }
+                    },
+                    displayControl: {
+                        billingAddress: 'HIDE',
+                        customerEmail: 'HIDE'
                     }
                 }
             });
 
-            // Mostrar el lightbox
-            window.Checkout.showLightbox();
+            // Usar showPaymentPage() para embeber en lugar de lightbox
+            window.Checkout.showPaymentPage();
         };
         script.onerror = () => {
             setError('Error al cargar el módulo de pago');

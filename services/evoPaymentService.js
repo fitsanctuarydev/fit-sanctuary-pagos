@@ -77,8 +77,12 @@ class EVOPaymentService {
 
       const requestData = {
         apiOperation: 'CREATE_CHECKOUT_SESSION',
+        interaction: {
+          operation: 'PURCHASE'
+        },
         order: {
           id: sessionOrderId,
+          amount: parseFloat(amount).toFixed(2),
           currency: this.currency
         }
       };

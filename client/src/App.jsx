@@ -8,11 +8,13 @@ import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import RefundPolicy from './pages/RefundPolicy';
 import RenewalPage from './RenewalPage';
+import EVOCheckoutForm from './components/EVOCheckoutForm';
 
 const cleanKey = (key) => (key || "").replace(/[\n\r\s]/g, "").trim();
 const STRIPE_KEY = cleanKey(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 const MP_KEY = cleanKey(import.meta.env.VITE_MP_PUBLIC_KEY);
 const PAYPAL_ID = cleanKey(import.meta.env.VITE_PAYPAL_CLIENT_ID);
+const EVO_ENABLED = import.meta.env.VITE_EVO_ENABLED === 'true';
 
 const stripePromise = STRIPE_KEY && !STRIPE_KEY.includes('TU_CLAVE') ? loadStripe(STRIPE_KEY) : null;
 if (MP_KEY && !MP_KEY.includes('TU_CLAVE')) { 
@@ -976,6 +978,22 @@ function App() {
                                 </button>
                                 <button 
                                     onClick={() => {
+                                        if (!email || !clientInfo.nombre || !clientInfo.apellido || !clientInfo.telefono || !clientInfo.fechaNacimiento || !clientInfo.genero || !clientInfo.contactoEmergencia || !clientInfo.telefonoEmergencia || !clientInfo.aceptaTerminos) {
+                                            alert('Por favor completa todos los campos obligatorios (*)');
+                                            return;
+                                        }
+                                        if (selectedPlan.id === 'clase_pilates' && !selectedSchedule) {
+                                            alert('Por favor selecciona un horario para la clase de Pilates');
+                                            return;
+                                        }
+                                        setPaymentMethod('evo');
+                                    }} 
+                                    className="w-full bg-gradient-to-r from-red-700 to-orange-600 text-white p-4 rounded-xl flex items-center justify-between hover:from-red-600 hover:to-orange-500 transition-colors"
+                                >
+                                    <div className="text-left"><span className="block font-bold text-sm">EVO Payments</span><span className="text-[10px] opacity-90">Mastercard Seguro</span></div><ChevronRight className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => {
                                         // Para renovaciones, solo validar email
                                         if (esRenovacion) {
                                             if (!email || !email.includes('@')) {
@@ -1038,6 +1056,19 @@ function App() {
                                     <Elements key={stripeClientSecret} stripe={stripePromise} options={{ clientSecret: stripeClientSecret, appearance: { theme: 'night', labels: 'floating' } }}>
                                         <StripeForm onSuccess={handleSuccess} />
                                     </Elements>
+                                )}
+
+                                {paymentMethod === 'evo' && (
+                                    <EVOCheckoutForm
+                                        amount={getTotal(selectedPlan.price)}
+                                        email={email}
+                                        nombre={clientInfo.nombre}
+                                        apellido={clientInfo.apellido}
+                                        productId={selectedPlan.id}
+                                        productName={selectedPlan.name}
+                                        orderId={orderId}
+                                        onSuccess={handleSuccess}
+                                    />
                                 )}
                                 
                                 {/* MERCADO PAGO - CORREGIDO */}

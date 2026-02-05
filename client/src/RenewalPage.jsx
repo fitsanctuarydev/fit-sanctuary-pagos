@@ -3,6 +3,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 import { ShieldCheck, Lock, CheckCircle, ChevronRight, CreditCard, Mail } from 'lucide-react';
+import EVOCheckoutForm from './components/EVOCheckoutForm';
 
 const cleanKey = (key) => (key || "").replace(/[\n\r\s]/g, "").trim();
 const STRIPE_KEY = cleanKey(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
@@ -197,6 +198,14 @@ export default function RenewalPage() {
         }
     };
 
+    const initEVOPayment = () => {
+        if (!email || !email.includes('@')) {
+            alert('Por favor ingresa un email válido');
+            return;
+        }
+        setPaymentMethod('evo');
+    };
+
     const initMPPayment = async () => {
         if (!email || !email.includes('@')) {
             alert('Por favor ingresa un email válido');
@@ -365,6 +374,19 @@ export default function RenewalPage() {
                         <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-wide">Selecciona Método de Pago</h3>
                         
                         <button 
+                            onClick={initEVOPayment}
+                            disabled={loading}
+                            className="w-full bg-gradient-to-r from-red-700 to-orange-600 text-white p-5 rounded-xl flex items-center justify-between hover:from-red-600 hover:to-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <div className="text-left">
+                                <CreditCard className="w-5 h-5 mb-1" />
+                                <span className="block font-bold text-base">EVO Payments</span>
+                                <span className="text-xs opacity-90">Mastercard Seguro</span>
+                            </div>
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
+
+                        <button 
                             onClick={initStripePayment}
                             disabled={loading}
                             className="w-full bg-white text-black p-5 rounded-xl flex items-center justify-between hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -394,6 +416,22 @@ export default function RenewalPage() {
                                 {mpError}
                             </div>
                         )}
+                    </div>
+                ) : paymentMethod === 'evo' ? (
+                    <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                        <EVOCheckoutForm
+                            amount={getTotal(priceToApply || plan.price)}
+                            email={email}
+                            nombre={renewalData.clienteNombre.split(' ')[0] || ''}
+                            apellido={renewalData.clienteNombre.split(' ').slice(1).join(' ') || ''}
+                            productId={plan.id}
+                            productName={plan.name}
+                            orderId={orderId}
+                            isRenewal={true}
+                            clienteId={renewalData.clienteId}
+                            membershipId={renewalData.membershipId}
+                            onSuccess={handleSuccess}
+                        />
                     </div>
                 ) : paymentMethod === 'stripe' && stripeClientSecret ? (
                     <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">

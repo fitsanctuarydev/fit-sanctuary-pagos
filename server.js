@@ -216,9 +216,13 @@ app.post('/api/evo/create-session', async (req, res) => {
 
     console.log(`✓ Sesión EVO creada: ${sessionData.sessionId}`);
 
+    // Construir URL del Hosted Checkout
+    const hostedCheckoutUrl = `${evoPaymentService.baseUrl}/checkout/version/${evoPaymentService.apiVersion}/checkout.js?session.id=${sessionData.sessionId}`;
+
     return res.json({
       sessionId: sessionData.sessionId,
       orderId: sessionData.orderId,
+      hostedCheckoutUrl: hostedCheckoutUrl,
       baseUrl: evoPaymentService.baseUrl,
       apiVersion: evoPaymentService.apiVersion,
       merchantId: evoPaymentService.merchantId,

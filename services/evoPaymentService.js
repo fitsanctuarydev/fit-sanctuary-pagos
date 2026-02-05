@@ -13,7 +13,7 @@ const { v4: uuidv4 } = require('uuid');
  */
 class EVOPaymentService {
   constructor() {
-    this.baseUrl = process.env.EVO_BASE_URL || 'https://test.payment-gateway.com';
+    this.baseUrl = process.env.EVO_BASE_URL || 'https://evopaymentsmexico.gateway.mastercard.com';
     this.merchantId = process.env.EVO_MERCHANT_ID;
     this.apiVersion = process.env.EVO_API_VERSION || '53';
     this.username = process.env.EVO_USERNAME;

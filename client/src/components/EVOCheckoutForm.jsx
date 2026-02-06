@@ -109,7 +109,6 @@ export default function EVOCheckoutForm({
         }
 
         const script = document.createElement('script');
-        const script = document.createElement('script');
         script.src = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout.js?nocache=${Date.now()}`;
         script.setAttribute('data-error', 'evoErrorCallback');
         script.setAttribute('data-complete', 'evoCompleteCallback');

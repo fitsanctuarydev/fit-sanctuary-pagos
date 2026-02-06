@@ -104,6 +104,7 @@ export default function EVOCheckoutForm({
         script.setAttribute('data-error', 'evoErrorCallback');
         script.setAttribute('data-complete', 'evoCompleteCallback');
         script.setAttribute('data-cancel', 'evoCancelCallback');
+        script.setAttribute('data-evo-checkout', 'true');
         script.onload = startCheckout;
         script.onerror = () => {
             setError('Error al cargar el módulo de pago');
@@ -151,6 +152,15 @@ export default function EVOCheckoutForm({
             console.log('✅ Sesión EVO creada:', data.sessionId);
             setSessionId(data.sessionId);
             setSuccessIndicator(data.successIndicator || null);
+            if (data.orderId && data.successIndicator) {
+                localStorage.setItem(
+                    `evo:${data.orderId}`,
+                    JSON.stringify({
+                        orderId: data.orderId,
+                        successIndicator: data.successIndicator
+                    })
+                );
+            }
             setStep('session-created');
 
             // Inicializar Hosted Checkout con JavaScript

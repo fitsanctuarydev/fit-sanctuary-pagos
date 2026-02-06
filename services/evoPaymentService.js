@@ -15,7 +15,7 @@ class EVOPaymentService {
   constructor() {
     this.baseUrl = process.env.EVO_BASE_URL || 'https://evopaymentsmexico.gateway.mastercard.com';
     this.merchantId = process.env.EVO_MERCHANT_ID;
-    this.apiVersion = process.env.EVO_API_VERSION || '53';
+    this.apiVersion = process.env.EVO_API_VERSION || '100';
     this.username = process.env.EVO_USERNAME;
     this.password = process.env.EVO_PASSWORD;
     this.webhookSecret = process.env.EVO_WEBHOOK_SECRET;

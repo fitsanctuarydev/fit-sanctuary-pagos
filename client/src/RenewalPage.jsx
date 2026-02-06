@@ -85,7 +85,8 @@ export default function RenewalPage() {
     const fetchPreviousMembership = async (membershipId) => {
         if (!membershipId || membershipId === 'null') return null;
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/memberships/${membershipId}`);
+            const apiBaseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+            const response = await fetch(`${apiBaseUrl}/api/memberships/${membershipId}`);
             if (response.ok) {
                 const membership = await response.json();
                 setPreviousMembership(membership);

@@ -75,10 +75,11 @@ class EVOPaymentService {
    * Crear una sesión de pago
    * @param {number} amount - Monto en unidades (no centavos)
    * @param {string} orderId - ID único de la orden (opcional, se genera si no existe)
-   * @param {string} description - Descripción de la orden
+  * @param {string} description - Descripción de la orden
+  * @param {string} returnUrl - URL de retorno del checkout
    * @returns {Promise<object>} Respuesta con sessionId
    */
-  async createSession(amount, orderId = null, description = 'Membresía Fit Sanctuary') {
+  async createSession(amount, orderId = null, description = 'Membresía Fit Sanctuary', returnUrl = null) {
     return new Promise((resolve, reject) => {
       const sessionOrderId = orderId || `ORD-${uuidv4()}`;
       const sessionUrl = `${this.baseUrl}/api/rest/version/${this.apiVersion}/merchant/${this.merchantId}/session`;
@@ -86,7 +87,8 @@ class EVOPaymentService {
       const requestData = {
         apiOperation: 'CREATE_CHECKOUT_SESSION',
         interaction: {
-          operation: 'PURCHASE'
+          operation: 'PURCHASE',
+          ...(returnUrl ? { returnUrl } : {})
         },
         order: {
           id: sessionOrderId,

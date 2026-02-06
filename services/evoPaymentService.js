@@ -85,23 +85,22 @@ class EVOPaymentService {
       const sessionUrl = `${this.baseUrl}/api/rest/version/${this.apiVersion}/merchant/${this.merchantId}/session`;
 
       const requestData = {
-        apiOperation: 'CREATE_CHECKOUT_SESSION',
+        apiOperation: 'INITIATE_CHECKOUT',
         interaction: {
-          operation: 'PURCHASE'
+          operation: 'PURCHASE',
+          merchant: {
+            name: 'Fit Sanctuary'
+          }
         },
         order: {
           id: sessionOrderId,
           amount: parseFloat(amount).toFixed(2),
           currency: this.currency,
           description: description
-        },
-        sourceOfFunds: {
-          type: 'CARD'
-        },
-        allowedCardTypes: ['VISA', 'MASTERCARD', 'AMEX']
+        }
       };
 
-      // Solo agregar returnUrl si se proporciona (lightbox no lo necesita)
+      // Solo agregar returnUrl si se proporciona
       if (returnUrl) {
         requestData.interaction.returnUrl = returnUrl;
       }

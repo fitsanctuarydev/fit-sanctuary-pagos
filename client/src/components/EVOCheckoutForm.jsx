@@ -77,24 +77,15 @@ export default function EVOCheckoutForm({
             }
 
             try {
+                // Configure solo con session.id según documentación oficial v67+
                 window.Checkout.configure({
                     session: {
                         id: sessionData.sessionId
-                    },
-                    interaction: {
-                        merchant: {
-                            name: 'Fit Sanctuary',
-                            address: {
-                                line1: 'Gym Address'
-                            }
-                        },
-                        displayControl: {
-                            billingAddress: 'HIDE',
-                            customerEmail: 'HIDE'
-                        }
                     }
                 });
-                window.Checkout.showLightbox();
+                
+                // Mostrar la página de pago (payment page)
+                window.Checkout.showPaymentPage();
             } catch (err) {
                 console.error('❌ Error al iniciar Hosted Checkout:', err);
                 setError('Error al iniciar el checkout: ' + err.message);
@@ -109,11 +100,10 @@ export default function EVOCheckoutForm({
         }
 
         const script = document.createElement('script');
-        script.src = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout.js?nocache=${Date.now()}`;
+        script.src = `${sessionData.baseUrl}/static/checkout/checkout.min.js?nocache=${Date.now()}`;
         script.setAttribute('data-error', 'evoErrorCallback');
         script.setAttribute('data-complete', 'evoCompleteCallback');
         script.setAttribute('data-cancel', 'evoCancelCallback');
-        script.setAttribute('data-evo-checkout', 'true');
         script.onload = startCheckout;
         script.onerror = () => {
             setError('Error al cargar el módulo de pago');

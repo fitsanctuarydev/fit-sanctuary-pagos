@@ -14405,3 +14405,456 @@ Value must be a member of the following list. The values are case sensitive.
 
 ERROR
 The operation resulted in an error and hence cannot be processed.
+
+
+Checkout SDK overview
+The checkout.min.js JavaScript library allows simple payment integrations for merchant sites.
+
+URL
+https://evopaymentsmexico.gateway.mastercard.com/static/checkout/checkout.min.js
+Functions
+configure()
+Prepare the library before payment.
+
+showEmbeddedPage()
+Show a hosted payment form embedded into the merchant site.
+
+showPaymentPage()
+Redirect to a hosted payment page to complete payment.
+
+saveFormFields()
+A default implementation of a beforeRedirect callback.
+
+restoreFormFields()
+A default implementation of an afterRedirect callback.
+
+Callbacks
+error
+Invoked when error occurs during initiation of payment.
+
+complete
+Invoked when payment has been completed.
+
+cancel
+When the payer cancels the payment interaction. Note: Cancel callback can only be used with payment page, it will not work with embedded page.
+
+timeout
+Invoked when the payment is not completed within the duration available to the payer to make the payment.
+
+beforeRedirect
+Invoked before browser is redirected away from page.
+
+afterRedirect
+Invoked when browser returns to page after redirect.
+
+Example
+<html>
+    <head>
+        <script src="https://evopaymentsmexico.gateway.mastercard.com/static/checkout/checkout.min.js"
+                data-error="errorCallback"
+                data-cancel="cancelCallback">
+        </script>
+    
+        <script type="text/javascript">
+            function errorCallback(error) {
+                  console.log(JSON.stringify(error));
+            }
+            function cancelCallback() {
+                  console.log('Payment cancelled');
+            }
+        
+            Checkout.configure({
+                session: {
+                    id:  '<your_initiate_checkout_session_ID>'
+                }
+            });
+            
+        </script>
+    </head>
+    <body>
+        ...
+    
+        <div id="embed-target"> </div>
+        <input type="button" value="Pay with Embedded Page" onclick="Checkout.showEmbeddedPage('#embed-target');" />
+        <input type="button" value="Pay with Payment Page" onclick="Checkout.showPaymentPage();" />
+    
+        ...
+    </body>
+</html>
+
+
+
+Click to Pay SDK overview
+The click-to-pay.js JavaScript library allows you to add support for Click to Pay to your payment page.
+
+Click to Pay is an intelligent, password-free online checkout option that provides a quick and easy checkout experience designed to make 'guest checkout' for a payer faster and easier across all devices.
+
+Click to Pay provides a single checkout button and a standardized checkout flow for all participating card schemes.
+
+For the previous version of the srci.js, please click here.
+
+Supported only in API version 62 and later.
+
+URL
+https://evopaymentsmexico.gateway.mastercard.com/static/click-to-pay/click-to-pay.min.js
+Functions
+configure()
+Configuration method for initializing the API.
+
+isEnrollmentAvailableForCardPrefix()
+Allows you to determine if you can offer the payer to enroll the card in Click to Pay if they have provided a card number with the provided 10-digit card prefix.
+
+isEnrollmentAvailableForScheme()
+Allows you to determine if you can offer the payer to enroll the card in Click to Pay if they have provided a card with this scheme.
+
+checkoutWithNewCard()
+Allows you to trigger the Click to Pay checkout with a card that has not yet been enrolled in SRC.
+
+checkoutWithExistingCard()
+Allows you to trigger the Click to Pay checkout when the payer has selected a card that is already enrolled in SRC.
+
+unbindCookies()
+Use this function when the payer clicks the 'Not you?' link to delete the cookies you are using to recognize the payer.
+
+initiatePayerInteraction()
+Allows you to trigger the Click to Pay interaction with the payer separately from initializing the Click to Pay interaction using the configure() function.
+
+updateConfiguration()
+Allows the merchant to modify configuration after Click To Pay has been configured.
+
+Callbacks
+onComplete
+Triggered when the payer has completed the Click to Pay interaction.
+
+onStateChange
+Triggered when the payer email changes it changes if the payer's device is recognized
+
+onError
+Triggered if an error occurs during checkout.
+
+
+PayPal SDK overview
+The gateway-paypal.js is a JavaScript based client-side SDK for PayPal payments.
+
+Supported only in API version 62 and later.
+
+URL
+https://evopaymentsmexico.gateway.mastercard.com/static/gateway-paypal/1.2.0/gateway-paypal.min.js
+Functions
+configure()
+Configuration method for initializing the SDK.
+
+Risk SDK overview
+The risk.js is a JavaScript based client-side SDK for integration with NuDetect risk assessment platform.
+
+Supported only in API version 56 and later.
+
+URL
+https://evopaymentsmexico.gateway.mastercard.com/static/risk-core/1.0.0/risk.min.js
+Functions
+configure()
+Configuration method for initializing the API.
+
+Rupay SDK overview
+The rupay.js is a JavaScript based client-side SDK for Rupay authentication flows for online payments.
+
+Supported only in API version 55 and later.
+
+URL
+https://evopaymentsmexico.gateway.mastercard.com/static/rupay/1.0.0/rupay.js
+Functions
+configure()
+Configuration method for initializing the API.
+
+isConfigured()
+Convenience method to check if the API has been configured successfully.
+
+onEvent()
+Method to subscribe for event changes.
+
+initiateAuthentication()
+Initiate RuPay Authentication for the arguments passed.
+
+authenticatePayer()
+Authentication method for authenticating payer using RuPay that was initiated using initiateAuthentication call.
+
+getLastCorrelationId()
+Get the last correlation id that was used for making the REST API call.
+
+Session SDK Overview
+The session.js JavaScript library allows you to collect sensitive payment details from the payer in fields hosted by the gateway. Use this library if you want to control the layout and styling of your payment page, while reducing PCI compliance costs. The gateway collects the payment details from the payer and stores them in a payment session. You can then include the payment session in place of the payment details in the transaction request to process a payment. For full details see Implementing a Hosted Session Integration. The library also has support for collecting multiple sets of payment details on the same payment page, see Multiple Hosted Session for details.
+
+Supported only in API version 18 and later.
+
+URL
+https://evopaymentsmexico.gateway.mastercard.com/form/version/100/merchant/<MERCHANTID>/session.js
+
+Functions
+configure()
+Configures the Hosted Session interaction.
+
+updateSessionFromForm()
+Stores the input from the hosted field into the session.
+
+setFocus()
+Sets focus on the specified hosted field.
+
+setFocusStyle()
+Sets the styling attributes for the specified hosted fields when the focus is gained.
+
+setHoverStyle()
+Sets the styling attributes for the specified hosted fields when a mouse hover occurs.
+
+setMessage()
+Sets the content of the hidden label for the specified hosted field.
+
+setPlaceholderStyle()
+Sets the styling attributes for the placeholder text for the specified hosted fields.
+
+setPlaceholderShownStyle()
+Sets the styling attributes for the specified hosted fields when the placeholder text is visible.
+
+validate()
+Validates all hosted fields configured for specified payment type.
+
+setLocale()
+Set language in hosted Session and call POI if card number is present
+
+Callbacks
+onFocus
+Invoked when the hosted field has gained focus.
+
+onBlur
+Invoked when the hosted field has lost focus.
+
+onChange
+Invoked when the input value in the hosted field has changed.
+
+onMouseOver
+Invoked when a mouse over event occurs in the hosted field.
+
+onMouseOut
+Invoked when a mouse out event occurs in the hosted field.
+
+onCardBINChange
+Invoked when the card BIN is detected or changed in the card number field.
+
+onCardTypeChange
+Invoked when the card type is detected or changed in the card number field.
+
+onEmptinessChange
+Invoked when the emptiness status changes in the hosted field.
+
+onValidityChange
+Invoked when the validation result changes in the hosted field.
+
+Example
+<html>
+<head>
+<!-- INCLUDE SESSION.JS JAVASCRIPT LIBRARY -->
+<script src="https://evopaymentsmexico.gateway.mastercard.com/form/version/100/merchant/<MERCHANTID>/session.js"></script>
+
+<!-- APPLY CLICK-JACKING STYLING AND HIDE CONTENTS OF THE PAGE -->
+<style id="antiClickjack">body{display:none !important;}</style>
+</head>
+<body>
+
+<!-- CREATE THE HTML FOR THE PAYMENT PAGE -->
+
+<div>Please enter your payment details:</div>
+<h3>Credit Card</h3>
+<div>Card Number: <input type="text" id="card-number" class="input-field" title="card number" aria-label="enter your card number" value="" tabindex="1" readonly></div>
+<div>Expiry Month:<input type="text" id="expiry-month" class="input-field" title="expiry month" aria-label="two digit expiry month" value="" tabindex="2" readonly></div>
+<div>Expiry Year:<input type="text" id="expiry-year" class="input-field" title="expiry year" aria-label="two digit expiry year" value="" tabindex="3" readonly></div>
+<div>Security Code:<input type="text" id="security-code" class="input-field" title="security code" aria-label="three digit CCV security code" value="" tabindex="4" readonly></div>
+<div>Cardholder Name:<input type="text" id="cardholder-name" class="input-field" title="cardholder name" aria-label="enter name on card" value="" tabindex="5" readonly></div>
+<div><button id="payButton" onclick="pay('card');">Pay Now</button></div>
+
+<h3>Gift Card</h3>
+<div>Card Number: <input type="text" id="gift-card-number" class="input-field" value="" readonly></div>
+<div>Pin:<input type="text" id="gift-card-pin" class="input-field" value="" readonly></div>
+
+<div><button id="payButton" onclick="pay('giftCard');">Pay With Gift Card</button></div>
+
+<h3>Automated Clearing House</h3>
+  <div>
+  <label class="control-label" id="ach-account-type-label">Account Type:</label>
+  <select class="form-control col-sm-6" name="ach-account-type" id="ach-account-type">
+  <option value="CONSUMER_SAVINGS">Consumer Savings Account</option>
+  <option value="CONSUMER_CHECKING" selected>Consumer Checking Account</option>
+  <option value="CORPORATE_CHECKING">Business Checking Account</option>
+ </select>
+    </div>
+
+<div>Bank Account Holder:<input type="text" id="ach-account-holder" class="input-field" value="" readonly></div>
+<div>Bank Account Number:<input type="text" id="ach-account-number" class="input-field" value="" readonly></div>
+<div>Bank Account Number Confirmation:<input type="text" id="ach-account-number-confirmation" class="input-field" value="" readonly></div>
+<div>Routing Number:<input type="text" id="ach-routing-number" class="input-field" value="" readonly></div>
+
+<div><button id="payButton" onclick="pay('ach');">Pay With ACH</button></div>
+<hr>
+
+
+<!-- DISPLAY VISA CHECKOUT AND AMEX EXPRESS CHECKOUT AS A PAYMENT OPTION ON YOUR PAYMENT PAGE -->
+
+<!-- REPLACE THE action URL with the payment URL on your webserver -->
+<form name="myform" method="POST" action="https://my.company.com/pay">
+<!-- Other fields can be added to enable you to collect additional data on the payment page -->
+Email: <input type="text" name="email">
+<!-- The hidden values below can be set in the callback function as they are returned when creating the session -->
+<input type="hidden" name="sessionId" id="sessionId">
+<img id="visaCheckoutButton" alt="Visa Checkout" role="button" class="v-button" style="display: none;" src="https://sandbox.www.v.me/wallet-services-web/xo/button.png"/>
+<div id="amex-express-checkout"></div>
+</form>
+
+<!-- JAVASCRIPT FRAME-BREAKER CODE TO PROVIDE PROTECTION AGAINST IFRAME CLICK-JACKING -->
+<script type="text/javascript">
+if (self === top) {
+    var antiClickjack = document.getElementById("antiClickjack");
+    antiClickjack.parentNode.removeChild(antiClickjack);
+} else {
+    top.location = self.location;
+}
+
+PaymentSession.configure({
+    session: "<your_session_ID>",
+    fields: {
+        // Attach hosted fields to your payment page
+            card: {
+                number: "#card-number",
+                securityCode: "#security-code",
+                expiryMonth: "#expiry-month",
+                expiryYear: "#expiry-year",
+                nameOnCard: "#cardholder-name"
+            },
+            giftCard: {
+                    number: "#gift-card-number",
+                    pin: "#gift-card-pin"
+                  },
+            ach: {
+                    accountType: "#ach-account-type",
+                    bankAccountHolder: "#ach-account-holder",
+                    bankAccountNumber: "#ach-account-number",
+                    bankAccountNumberConfirmation: "#ach-account-number-confirmation",
+                    routingNumber: "#ach-routing-number"
+                  },
+            directDebitCanada: {
+                    accountType: "#account-type",
+                    bankAccountHolder: "#bank-account-holder",
+                    bankAccountNumber: "#bank-account-number",
+                    transitNumber: "#transit-number",
+                    financialInstitutionNumber: "#financial-institution-number",
+                    bankAccountNumberConfirmation: "#bank-account-number-confirmation"
+
+            }
+          },
+    frameEmbeddingMitigation: ["javascript"],
+    callbacks: {
+        initialized: function(response) {
+            // HANDLE INITIALIZATION RESPONSE
+            if (response.status === "ok") {
+                document.getElementById("visaCheckoutButton").style.display = 'block';
+            }
+        },
+
+        formSessionUpdate: function(response) {
+            // HANDLE RESPONSE FOR UPDATE SESSION
+        if (response.status) {
+            if ("ok" == response.status) {
+                console.log("Session updated with data: " + response.session.id);
+
+                //check if the security code was provided by the user
+                if (response.sourceOfFunds.provided.card.securityCode) {
+                    console.log("Security code was provided.");
+                }
+
+                //check if the user entered a MasterCard credit card
+                if (response.sourceOfFunds.provided.card.scheme == 'MASTERCARD') {
+                    console.log("The user entered a MasterCard credit card.")
+                }
+            } else if ("fields_in_error" == response.status)  {
+
+                console.log("Session update failed with field errors.");
+                if (response.errors.cardNumber) {
+                    console.log("Card number invalid or missing.");
+                }
+                if (response.errors.expiryYear) {
+                    console.log("Expiry year invalid or missing.");
+                }
+                if (response.errors.expiryMonth) {
+                    console.log("Expiry month invalid or missing.");
+                }
+                if (response.errors.securityCode) {
+                    console.log("Security code invalid.");
+                }
+                if (response.errors.number) {
+                    console.log("Gift card number invalid or missing.");
+                }
+                if (response.errors.pin) {
+                    console.log("Pin invalid or missing.");
+                }
+                if (response.errors.bankAccountHolder) {
+                    console.log("Bank account holder invalid.");
+                }
+                if (response.errors.bankAccountNumber) {
+                    console.log("Bank account number invalid.");
+                }
+                if (response.errors.routingNumber) {
+                    console.log("Routing number invalid.");
+                }
+            } else if ("request_timeout" == response.status)  {
+                console.log("Session update failed with request timeout: " + response.errors.message);
+            } else if ("system_error" == response.status)  {
+                console.log("Session update failed with system error: " + response.errors.message);
+            }
+        } else {
+            console.log("Session update failed: " + response);
+        }
+        }
+    },
+    interaction: {
+        displayControl: {
+            formatCard: "EMBOSSED",
+            invalidFieldCharacters: "REJECT"
+        }
+    }
+});
+
+function pay(paymentType) {
+    // UPDATE THE SESSION WITH THE INPUT FROM HOSTED FIELDS
+    if (paymentType === 'giftCard') {
+        PaymentSession.updateSessionFromForm(paymentType, '<localCardBrand>');
+    } else {
+        PaymentSession.updateSessionFromForm(paymentType);
+    }
+}
+</script>
+</body>
+</html>
+
+ThreeDS SDK overview
+The threeDS.js is a JavaScript based client-side SDK for 3DS authentication flows for online payments.
+
+Supported only in API version 54 and later.
+
+URL
+https://evopaymentsmexico.gateway.mastercard.com/static/threeDS/1.3.0/three-ds.min.js
+Functions
+configure()
+Configuration method for initializing the API.
+
+isConfigured()
+Convenience method to check if the API has been configured successfully.
+
+onEvent()
+Method to subscribe for event changes.
+
+initiateAuthentication()
+Initiate 3DS Authentication for the arguments passed.
+
+authenticatePayer()
+Authentication method for authenticating payer using 3DS that was initiated using initiateAuthentication call.
+
+getLastCorrelationId()
+Get the last correlation id that was used for making the REST API call.
+

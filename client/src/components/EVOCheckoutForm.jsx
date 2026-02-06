@@ -90,7 +90,14 @@ export default function EVOCheckoutForm({
 
                 // Mostrar la página embebida dentro de modal
                 setShowModal(true);
-                window.Checkout.showEmbeddedPage('#evo-embed-target');
+                // Esperar a que el contenedor exista en el DOM
+                setTimeout(() => {
+                    if (document.querySelector('#evo-embed-target')) {
+                        window.Checkout.showEmbeddedPage('#evo-embed-target');
+                    } else {
+                        throw new Error('No se encontró el contenedor de pago');
+                    }
+                }, 0);
             } catch (err) {
                 console.error('❌ Error al iniciar Hosted Checkout:', err);
                 setError('Error al iniciar el checkout: ' + err.message);

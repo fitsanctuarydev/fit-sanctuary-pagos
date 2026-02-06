@@ -24,7 +24,7 @@ export default function EVOCheckoutForm({
     const [sessionId, setSessionId] = useState(null);
     const [successIndicator, setSuccessIndicator] = useState(null);
     const [step, setStep] = useState('init'); // init, session-created, processing, success, error
-    const [showModal, setShowModal] = useState(false);
+    const [embedReady, setEmbedReady] = useState(false);
 
     /**
      * Inicializar Hosted Checkout con lightbox
@@ -51,13 +51,13 @@ export default function EVOCheckoutForm({
         window.evoCancelCallback = () => {
             setError('Pago cancelado por el usuario');
             setStep('error');
-            setShowModal(false);
+            setEmbedReady(false);
         };
 
         window.evoCompleteCallback = (resultIndicator) => {
             if (sessionData.successIndicator && resultIndicator === sessionData.successIndicator) {
                 setStep('success');
-                setShowModal(false);
+                setEmbedReady(false);
                 if (onSuccess) {
                     onSuccess({
                         transactionId: resultIndicator,
@@ -70,7 +70,7 @@ export default function EVOCheckoutForm({
 
             setError('Pago rechazado por validación de riesgo. Intenta con otra tarjeta.');
             setStep('error');
-            setShowModal(false);
+            setEmbedReady(false);
         };
 
         const startCheckout = () => {
@@ -88,8 +88,8 @@ export default function EVOCheckoutForm({
                     }
                 });
 
-                // Mostrar la página embebida dentro de modal
-                setShowModal(true);
+                // Mostrar la página embebida dentro del contenedor
+                setEmbedReady(true);
 
                 const waitForContainer = (attempt = 0) => {
                     const container = document.querySelector('#evo-embed-target');
@@ -100,7 +100,7 @@ export default function EVOCheckoutForm({
                     if (attempt >= 20) {
                         setError('No se encontró el contenedor de pago');
                         setStep('error');
-                        setShowModal(false);
+                        setEmbedReady(false);
                         return;
                     }
                     setTimeout(() => waitForContainer(attempt + 1), 50);
@@ -111,7 +111,7 @@ export default function EVOCheckoutForm({
                 console.error('❌ Error al iniciar Hosted Checkout:', err);
                 setError('Error al iniciar el checkout: ' + err.message);
                 setStep('error');
-                setShowModal(false);
+                setEmbedReady(false);
             }
         };
 
@@ -131,7 +131,7 @@ export default function EVOCheckoutForm({
         script.onerror = () => {
             setError('Error al cargar el módulo de pago');
             setStep('error');
-            setShowModal(false);
+            setEmbedReady(false);
         };
         document.body.appendChild(script);
     };
@@ -283,18 +283,15 @@ export default function EVOCheckoutForm({
                 </button>
             )}
 
-            {/* Estado: Sesión creada - lightbox abierto */}
+            {/* Estado: Sesión creada - formulario embebido */}
             {step === 'session-created' && (
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
                         <Loader className="w-4 h-4 animate-spin text-blue-400" />
                         <span className="text-sm text-blue-300">
-                            Ventana de pago abierta. Completa tu pago en el formulario emergente.
+                            Formulario de pago cargado. Completa tu pago en el formulario embebido.
                         </span>
                     </div>
-                    <p className="text-xs text-gray-500 text-center">
-                        Si no ves la ventana, verifica que tu navegador no esté bloqueando popups
-                    </p>
                 </div>
             )}
 
@@ -356,24 +353,10 @@ export default function EVOCheckoutForm({
                 </div>
             </div>
 
-            {/* Modal embebido de EVO */}
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-                    <div className="relative w-full max-w-3xl mx-4 bg-neutral-900 rounded-xl border border-neutral-700 shadow-2xl">
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-700">
-                            <h4 className="text-white font-semibold">Pago con EVO Payments</h4>
-                            <button
-                                onClick={() => setShowModal(false)}
-                                className="text-gray-400 hover:text-white"
-                                aria-label="Cerrar"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <div className="p-4">
-                            <div id="evo-embed-target" className="min-h-[520px]" />
-                        </div>
-                    </div>
+            {/* Contenedor embebido de EVO */}
+            {embedReady && (
+                <div className="mt-6 p-4 bg-neutral-950 border border-neutral-800 rounded-lg">
+                    <div id="evo-embed-target" className="min-h-[520px]" />
                 </div>
             )}
         </div>

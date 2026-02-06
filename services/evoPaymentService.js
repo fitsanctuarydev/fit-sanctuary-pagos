@@ -100,17 +100,18 @@ class EVOPaymentService {
         }
       };
 
-      if (customer?.email) {
+      // Agregar returnUrl si se proporciona
+      if (returnUrl) {
+        requestData.interaction.returnUrl = returnUrl;
+      }
+
+      // Agregar email del cliente si está disponible
+      if (customer && customer.email) {
         requestData.interaction.customerEmail = customer.email;
         requestData.interaction.displayControl = {
           ...(requestData.interaction.displayControl || {}),
           customerEmail: 'HIDE'
         };
-      }
-
-      // Solo agregar returnUrl si se proporciona
-      if (returnUrl) {
-        requestData.interaction.returnUrl = returnUrl;
       }
 
       let options = {

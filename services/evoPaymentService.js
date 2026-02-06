@@ -87,8 +87,7 @@ class EVOPaymentService {
       const requestData = {
         apiOperation: 'CREATE_CHECKOUT_SESSION',
         interaction: {
-          operation: 'PURCHASE',
-          ...(returnUrl ? { returnUrl } : {})
+          operation: 'PURCHASE'
         },
         order: {
           id: sessionOrderId,
@@ -97,6 +96,11 @@ class EVOPaymentService {
           description: description
         }
       };
+
+      // Solo agregar returnUrl si se proporciona (lightbox no lo necesita)
+      if (returnUrl) {
+        requestData.interaction.returnUrl = returnUrl;
+      }
 
       let options = {
         url: sessionUrl,

@@ -131,6 +131,7 @@ class EVOPaymentService {
           return resolve({
             orderId: sessionOrderId,
             sessionId: body.session.id,
+            successIndicator: body.successIndicator,
             updateStatus: body.session.updateStatus,
             version: body.session.version,
             timestamp: new Date().toISOString()

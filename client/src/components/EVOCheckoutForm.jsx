@@ -22,6 +22,7 @@ export default function EVOCheckoutForm({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [sessionId, setSessionId] = useState(null);
+    const [successIndicator, setSuccessIndicator] = useState(null);
     const [step, setStep] = useState('init'); // init, session-created, processing, success, error
 
     /**
@@ -29,9 +30,46 @@ export default function EVOCheckoutForm({
      * (EVO no permite iframe embebido por seguridad)
      */
     const initializeHostedCheckout = (sessionData) => {
-        const script = document.createElement('script');
-        script.src = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout.js`;
-        script.onload = () => {
+        const parseCheckoutError = (err) => {
+            if (!err) return 'Error al procesar el pago';
+            if (err.error?.explanation) return err.error.explanation;
+            if (err.explanation) return err.explanation;
+            if (typeof err === 'string') return err;
+            return 'Error al procesar el pago';
+        };
+
+        setSuccessIndicator(sessionData.successIndicator || null);
+
+        window.evoErrorCallback = (err) => {
+            const message = parseCheckoutError(err);
+            console.error('❌ EVO Checkout error:', err);
+            setError(message);
+            setStep('error');
+        };
+
+        window.evoCancelCallback = () => {
+            setError('Pago cancelado por el usuario');
+            setStep('error');
+        };
+
+        window.evoCompleteCallback = (resultIndicator) => {
+            if (sessionData.successIndicator && resultIndicator === sessionData.successIndicator) {
+                setStep('success');
+                if (onSuccess) {
+                    onSuccess({
+                        transactionId: resultIndicator,
+                        orderId: orderId,
+                        amount: amount
+                    });
+                }
+                return;
+            }
+
+            setError('Pago rechazado por validación de riesgo. Intenta con otra tarjeta.');
+            setStep('error');
+        };
+
+        const startCheckout = () => {
             window.Checkout.configure({
                 session: {
                     id: sessionData.sessionId
@@ -51,6 +89,20 @@ export default function EVOCheckoutForm({
             });
             window.Checkout.showLightbox();
         };
+
+        const existingScript = document.querySelector('script[data-evo-checkout="true"]');
+        if (existingScript) {
+            startCheckout();
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout.js`;
+        script.setAttribute('data-error', 'evoErrorCallback');
+        script.setAttribute('data-complete', 'evoCompleteCallback');
+        script.setAttribute('data-cancel', 'evoCancelCallback');
+        script.setAttribute('data-evo-checkout', 'true');
+        script.onload = startCheckout;
         script.onerror = () => {
             setError('Error al cargar el módulo de pago');
             setStep('error');
@@ -96,6 +148,7 @@ export default function EVOCheckoutForm({
 
             console.log('✅ Sesión EVO creada:', data.sessionId);
             setSessionId(data.sessionId);
+            setSuccessIndicator(data.successIndicator || null);
             setStep('session-created');
 
             // Inicializar Hosted Checkout con JavaScript

@@ -223,6 +223,7 @@ app.post('/api/evo/create-session', async (req, res) => {
     return res.json({
       sessionId: sessionData.sessionId,
       orderId: sessionData.orderId,
+      successIndicator: sessionData.successIndicator,
       hostedCheckoutUrl: hostedCheckoutUrl,
       baseUrl: evoPaymentService.baseUrl,
       apiVersion: evoPaymentService.apiVersion,

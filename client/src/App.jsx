@@ -8,6 +8,7 @@ import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import RefundPolicy from './pages/RefundPolicy';
 import RenewalPage from './RenewalPage';
+import EVOReturn from './pages/EVOReturn';
 import EVOCheckoutForm from './components/EVOCheckoutForm';
 
 const cleanKey = (key) => (key || "").replace(/[\n\r\s]/g, "").trim();
@@ -78,6 +79,12 @@ function App() {
     // 🔄 Detectar si es renovación
     const params = new URLSearchParams(window.location.search);
     const isRenewalMode = params.get('renovacion') === 'true';
+    const pathname = window.location.pathname;
+    
+    // Página de retorno de EVO (fallback)
+    if (pathname === '/evo-return') {
+        return <EVOReturn />;
+    }
     
     // Si es renovación, mostrar página dedicada
     if (isRenewalMode) {

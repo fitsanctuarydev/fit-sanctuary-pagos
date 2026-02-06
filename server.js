@@ -229,9 +229,11 @@ app.post('/api/evo/create-session', async (req, res) => {
 
     console.log(`🔄 EVO Payments: Creando sesión para $${amount} MXN`);
 
-    // Crear sesión de pago en EVO (sin returnUrl - usando callbacks de lightbox)
+    // Crear sesión de pago en EVO con returnUrl (requerido por gateway aunque se use lightbox)
     const description = productName || 'Membresía Fit Sanctuary';
-    const sessionData = await evoPaymentService.createSession(amount, req.body.orderId, description, null);
+    const baseUrl = process.env.FRONTEND_URL || 'https://pagos.fitsanctuary.mx';
+    const returnUrl = `${baseUrl}/evo-return?session=${req.body.orderId}`;
+    const sessionData = await evoPaymentService.createSession(amount, req.body.orderId, description, returnUrl);
 
     console.log(`✓ Sesión EVO creada: ${sessionData.sessionId}`);
 

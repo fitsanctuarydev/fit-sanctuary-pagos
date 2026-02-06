@@ -54,6 +54,19 @@ export default function EVOCheckoutForm({
             setEmbedReady(false);
         };
 
+        window.evoBeforeRedirect = () => {
+            if (window.Checkout?.saveFormFields) {
+                return window.Checkout.saveFormFields();
+            }
+            return null;
+        };
+
+        window.evoAfterRedirect = () => {
+            if (window.Checkout?.restoreFormFields) {
+                window.Checkout.restoreFormFields();
+            }
+        };
+
         window.evoCompleteCallback = (resultIndicator) => {
             if (sessionData.successIndicator && resultIndicator === sessionData.successIndicator) {
                 setStep('success');
@@ -126,6 +139,8 @@ export default function EVOCheckoutForm({
         script.setAttribute('data-error', 'evoErrorCallback');
         script.setAttribute('data-complete', 'evoCompleteCallback');
         script.setAttribute('data-cancel', 'evoCancelCallback');
+        script.setAttribute('data-beforeRedirect', 'evoBeforeRedirect');
+        script.setAttribute('data-afterRedirect', 'evoAfterRedirect');
         script.setAttribute('data-evo-checkout', 'true');
         script.onload = startCheckout;
         script.onerror = () => {

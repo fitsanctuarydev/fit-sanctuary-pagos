@@ -79,7 +79,7 @@ class EVOPaymentService {
   * @param {string} returnUrl - URL de retorno del checkout
    * @returns {Promise<object>} Respuesta con sessionId
    */
-  async createSession(amount, orderId = null, description = 'Membresía Fit Sanctuary', returnUrl = null) {
+  async createSession(amount, orderId = null, description = 'Membresía Fit Sanctuary', returnUrl = null, customer = {}) {
     return new Promise((resolve, reject) => {
       const sessionOrderId = orderId || `ORD-${uuidv4()}`;
       const sessionUrl = `${this.baseUrl}/api/rest/version/${this.apiVersion}/merchant/${this.merchantId}/session`;
@@ -99,6 +99,14 @@ class EVOPaymentService {
           description: description
         }
       };
+
+      if (customer?.email) {
+        requestData.interaction.customerEmail = customer.email;
+        requestData.interaction.displayControl = {
+          ...(requestData.interaction.displayControl || {}),
+          customerEmail: 'HIDE'
+        };
+      }
 
       // Solo agregar returnUrl si se proporciona
       if (returnUrl) {

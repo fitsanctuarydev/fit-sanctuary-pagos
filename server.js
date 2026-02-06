@@ -234,7 +234,13 @@ app.post('/api/evo/create-session', async (req, res) => {
     const orderId = req.body.orderId || `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
     const baseUrl = process.env.FRONTEND_URL || req.get('origin') || 'https://pagos.fitsanctuary.mx';
     const returnUrl = `${baseUrl.replace(/\/$/, '')}/evo-return?orderId=${encodeURIComponent(orderId)}`;
-    const sessionData = await evoPaymentService.createSession(amount, orderId, description, returnUrl);
+    const sessionData = await evoPaymentService.createSession(
+      amount,
+      orderId,
+      description,
+      returnUrl,
+      { email }
+    );
 
     console.log(`✓ Sesión EVO creada: ${sessionData.sessionId}`);
 

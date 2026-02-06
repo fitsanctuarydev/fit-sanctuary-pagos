@@ -370,8 +370,8 @@ export default function EVOCheckoutForm({
 
             {/* Contenedor embebido de EVO */}
             {embedReady && (
-                <div className="mt-6 p-4 bg-neutral-950 border border-neutral-800 rounded-lg">
-                    <div id="evo-embed-target" className="min-h-[520px]" />
+                <div className="mt-6 p-6 bg-neutral-950/70 border border-neutral-800 rounded-2xl">
+                    <div id="evo-embed-target" className="min-h-[640px]" />
                 </div>
             )}
         </div>

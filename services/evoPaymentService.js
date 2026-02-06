@@ -94,7 +94,11 @@ class EVOPaymentService {
           amount: parseFloat(amount).toFixed(2),
           currency: this.currency,
           description: description
-        }
+        },
+        sourceOfFunds: {
+          type: 'CARD'
+        },
+        allowedCardTypes: ['VISA', 'MASTERCARD', 'AMEX']
       };
 
       // Solo agregar returnUrl si se proporciona (lightbox no lo necesita)

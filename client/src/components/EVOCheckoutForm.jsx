@@ -70,24 +70,36 @@ export default function EVOCheckoutForm({
         };
 
         const startCheckout = () => {
-            window.Checkout.configure({
-                session: {
-                    id: sessionData.sessionId
-                },
-                interaction: {
-                    merchant: {
-                        name: 'Fit Sanctuary',
-                        address: {
-                            line1: 'Gym Address'
-                        }
+            // Esperar a que window.Checkout esté disponible
+            if (!window.Checkout) {
+                setTimeout(startCheckout, 100);
+                return;
+            }
+
+            try {
+                window.Checkout.configure({
+                    session: {
+                        id: sessionData.sessionId
                     },
-                    displayControl: {
-                        billingAddress: 'HIDE',
-                        customerEmail: 'HIDE'
+                    interaction: {
+                        merchant: {
+                            name: 'Fit Sanctuary',
+                            address: {
+                                line1: 'Gym Address'
+                            }
+                        },
+                        displayControl: {
+                            billingAddress: 'HIDE',
+                            customerEmail: 'HIDE'
+                        }
                     }
-                }
-            });
-            window.Checkout.showLightbox();
+                });
+                window.Checkout.showLightbox();
+            } catch (err) {
+                console.error('❌ Error al iniciar Hosted Checkout:', err);
+                setError('Error al iniciar el checkout: ' + err.message);
+                setStep('error');
+            }
         };
 
         const existingScript = document.querySelector('script[data-evo-checkout="true"]');
@@ -97,7 +109,8 @@ export default function EVOCheckoutForm({
         }
 
         const script = document.createElement('script');
-        script.src = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout.js`;
+        const script = document.createElement('script');
+        script.src = `${sessionData.baseUrl}/checkout/version/${sessionData.apiVersion}/checkout.js?nocache=${Date.now()}`;
         script.setAttribute('data-error', 'evoErrorCallback');
         script.setAttribute('data-complete', 'evoCompleteCallback');
         script.setAttribute('data-cancel', 'evoCancelCallback');

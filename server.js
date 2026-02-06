@@ -15,6 +15,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// EVO Hosted Checkout returnUrl (avoid 500 on gateway callback)
+app.all('/evo/return', (req, res) => {
+  return res.status(200).send(`
+    <!doctype html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Pago EVO</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; padding: 24px;">
+        <h2>Procesando pago...</h2>
+        <p>Puedes cerrar esta ventana y regresar al sitio.</p>
+      </body>
+    </html>
+  `);
+});
+
 // --- FIREBASE ADMIN INITIALIZATION ---
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
   console.error('❌ FIREBASE_SERVICE_ACCOUNT environment variable is required');

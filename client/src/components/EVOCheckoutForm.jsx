@@ -67,10 +67,49 @@ export default function EVOCheckoutForm({
             }
         };
 
-        window.evoCompleteCallback = (resultIndicator) => {
+        window.evoCompleteCallback = async (resultIndicator) => {
             if (sessionData.successIndicator && resultIndicator === sessionData.successIndicator) {
                 setStep('success');
                 setEmbedReady(false);
+                
+                // Enviar datos al CRM y correo de confirmación
+                try {
+                    // Enviar al CRM
+                    await fetch('/api/crm/create-client', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: email,
+                            nombre: nombre,
+                            apellido: apellido,
+                            membershipType: productId,
+                            amount: amount,
+                            orderId: orderId,
+                            esRenovacion: isRenewal,
+                            clienteId: clienteId,
+                            membershipId: membershipId
+                        })
+                    });
+                    
+                    // Enviar correo de confirmación
+                    await fetch('/api/send-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            email: email,
+                            plan: productName,
+                            price: amount,
+                            orderId: orderId,
+                            esRenovacion: isRenewal,
+                            clienteNombre: `${nombre} ${apellido}`.trim()
+                        })
+                    });
+                    
+                    console.log('✅ Confirmación enviada al CRM y por email');
+                } catch (e) {
+                    console.error('Error en proceso post-pago:', e);
+                }
+                
                 if (onSuccess) {
                     onSuccess({
                         transactionId: resultIndicator,
@@ -195,7 +234,10 @@ export default function EVOCheckoutForm({
                     `evo:${data.orderId}`,
                     JSON.stringify({
                         orderId: data.orderId,
-                        successIndicator: data.successIndicator
+                        successIndicator: data.successIndicator,
+                        plan: productName,
+                        amount: amount,
+                        email: email
                     })
                 );
             }

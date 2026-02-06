@@ -100,18 +100,9 @@ class EVOPaymentService {
         }
       };
 
-      // Agregar returnUrl si se proporciona
+      // Agregar returnUrl si se proporciona (requerido para embedded checkout)
       if (returnUrl) {
         requestData.interaction.returnUrl = returnUrl;
-      }
-
-      // Agregar email del cliente si está disponible
-      if (customer && customer.email) {
-        requestData.interaction.customerEmail = customer.email;
-        requestData.interaction.displayControl = {
-          ...(requestData.interaction.displayControl || {}),
-          customerEmail: 'HIDE'
-        };
       }
 
       let options = {

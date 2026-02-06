@@ -333,6 +333,65 @@ app.post('/api/evo/process-payment', async (req, res) => {
   }
 });
 
+// 2C. EVO WEBHOOK - Recibir notificaciones de transacciones
+app.post('/api/evo/webhook', express.json(), async (req, res) => {
+  try {
+    console.log('📥 EVO Webhook recibido:', {
+      headers: req.headers,
+      body: req.body
+    });
+
+    // Validar el secreto de notificación
+    const notificationSecret = req.headers['x-notification-secret'];
+    const expectedSecret = process.env.EVO_WEBHOOK_SECRET;
+
+    if (expectedSecret && notificationSecret !== expectedSecret) {
+      console.error('❌ EVO Webhook: Secreto inválido');
+      return res.status(401).json({ error: 'Invalid notification secret' });
+    }
+
+    // Extraer datos de la transacción
+    const { order, transaction, result } = req.body;
+
+    if (!order || !order.id) {
+      console.error('❌ EVO Webhook: Datos de orden inválidos');
+      return res.status(400).json({ error: 'Invalid order data' });
+    }
+
+    console.log(`🔔 EVO Webhook: Orden ${order.id}, Estado: ${order.status}, Resultado: ${result}`);
+
+    // Aquí puedes agregar lógica para:
+    // 1. Actualizar estado de orden en tu base de datos
+    // 2. Activar membresía si el pago fue exitoso
+    // 3. Enviar email de confirmación
+    // 4. Registrar en logs/auditoría
+
+    if (order.status === 'CAPTURED' || result === 'SUCCESS') {
+      console.log(`✅ Pago exitoso para orden ${order.id}: $${order.amount} ${order.currency}`);
+      
+      // TODO: Activar membresía aquí
+      // await activarMembresia(order.id, order.amount);
+    } else {
+      console.log(`⚠️ Pago no exitoso para orden ${order.id}: ${result}`);
+    }
+
+    // Responder con 200 OK para confirmar recepción
+    return res.status(200).json({ 
+      received: true,
+      orderId: order.id,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Error procesando EVO webhook:', error.message);
+    // Aún así devolver 200 para evitar reintentos del gateway
+    return res.status(200).json({ 
+      received: true, 
+      error: error.message 
+    });
+  }
+});
+
 // 3. PAYPAL
 const generatePayPalAccessToken = async () => {
   if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {

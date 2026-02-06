@@ -606,6 +606,19 @@ class EVOPaymentService {
   static convertToCents(units) {
     return units * 100;
   }
+
+  /**
+   * Validar webhook de EVO
+   * @param {string} secret - Secreto recibido en header X-Notification-Secret
+   * @returns {boolean} True si el secreto es válido
+   */
+  validateWebhook(secret) {
+    if (!this.webhookSecret) {
+      console.warn('⚠️ EVO_WEBHOOK_SECRET no configurado - webhook sin validación');
+      return true; // Permitir en desarrollo
+    }
+    return secret === this.webhookSecret;
+  }
 }
 
 module.exports = new EVOPaymentService();
